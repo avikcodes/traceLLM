@@ -1,0 +1,6 @@
+fastapi
+motor
+python-dotenv
+rich
+typer
+uvicorn
