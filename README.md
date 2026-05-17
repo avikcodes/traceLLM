@@ -1,4 +1,4 @@
-# <div align="center">
+<div align="center">
 
 <img src="https://raw.githubusercontent.com/avikcodes/traceLLM/main/assets/logo.png" width="140" />
 
@@ -6,14 +6,15 @@
 
 ### Open-Source Observability Platform for AI Applications & Agents
 
-Track prompts, latency, token usage, execution traces, tool calls, retries, and agent workflows in real time.
+Track prompts, latency, token usage, execution traces, tool calls, retries, hallucinations, and agent workflows in real time.
 
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg" />
   <img src="https://img.shields.io/badge/fastapi-backend-green.svg" />
-  <img src="https://img.shields.io/badge/mongodb-atlas-brightgreen.svg" />
-  <img src="https://img.shields.io/badge/status-active-success.svg" />
+  <img src="https://img.shields.io/badge/postgresql-database-blue.svg" />
+  <img src="https://img.shields.io/badge/websocket-live_logs-success.svg" />
   <img src="https://img.shields.io/badge/license-MIT-orange.svg" />
+  <img src="https://img.shields.io/badge/status-active-brightgreen.svg" />
 </p>
 
 </div>
