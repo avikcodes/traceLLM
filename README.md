@@ -1,6 +1,6 @@
 # <div align="center">
 
-<img src="./assets/logo.png" width="140" />
+<img src="https://raw.githubusercontent.com/avikcodes/traceLLM/main/assets/logo.png" width="140" />
 
 # TraceLLM
 
