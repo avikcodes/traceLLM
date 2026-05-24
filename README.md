@@ -2,7 +2,6 @@
 
 <img src="./assets/logo-wordmark.svg" width="340" />
 
-# TraceLLM
 
 ### Open-Source Observability Platform for AI Applications & Agents
 
