@@ -1,22 +1,34 @@
+"use client";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, BrainCircuit, Clock3, Coins, Database } from "lucide-react";
+import { useParams } from "next/navigation";
+import { ArrowLeft, BrainCircuit, Clock3, Coins, RefreshCcw, TriangleAlert } from "lucide-react";
 
 import { ExecutionFlow } from "@/components/timeline/execution-flow";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatFullTimestamp, getTraceById } from "@/lib/mock-data";
+import { useRealtimeTrace } from "@/hooks/use-observability-data";
+import { formatCompactNumber, formatDuration, formatFullTimestamp } from "@/lib/format";
 
-export default async function TraceDetailPage({
-  params,
-}: {
-  params: Promise<{ traceId: string }>;
-}) {
-  const { traceId } = await params;
-  const trace = getTraceById(traceId);
+export default function TraceDetailPage() {
+  const params = useParams<{ traceId: string }>();
+  const traceId = params?.traceId ?? "";
+  const { trace, loading } = useRealtimeTrace(traceId);
+
+  if (!loading && !trace) {
+    return (
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-zinc-300">
+        Trace not found.
+      </div>
+    );
+  }
 
   if (!trace) {
-    notFound();
+    return (
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-zinc-300">
+        Loading trace detail...
+      </div>
+    );
   }
 
   return (
@@ -30,10 +42,9 @@ export default async function TraceDetailPage({
             <ArrowLeft className="size-4" />
             Back to traces
           </Link>
-          <h1 className="mt-3 font-heading text-3xl text-white">{trace.traceId}</h1>
+          <h1 className="mt-3 font-heading text-3xl text-white">{trace.trace_id}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-zinc-400">
-            Full request and execution detail for a single LLM trace, including prompt,
-            response, timestamps, token use, and execution flow.
+            Full request and execution detail for a single LLM trace with replayable tool-call observability.
           </p>
         </div>
         <Badge
@@ -53,23 +64,23 @@ export default async function TraceDetailPage({
         {[
           {
             label: "Latency",
-            value: `${trace.latency} ms`,
+            value: formatDuration(trace.latency),
             icon: Clock3,
           },
           {
             label: "Token Count",
-            value: trace.tokenCount.toLocaleString(),
+            value: formatCompactNumber(trace.token_count),
             icon: Coins,
           },
           {
             label: "Model",
-            value: trace.model,
+            value: trace.model_name ?? "unknown",
             icon: BrainCircuit,
           },
           {
-            label: "Environment",
-            value: trace.environment,
-            icon: Database,
+            label: "Retries",
+            value: String(trace.retry_count),
+            icon: RefreshCcw,
           },
         ].map((item) => (
           <Card key={item.label}>
@@ -104,26 +115,27 @@ export default async function TraceDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="font-heading">Trace Metadata</CardTitle>
-            <CardDescription>Timing, cost, and persistence details.</CardDescription>
+            <CardDescription>Timing, warnings, and persistence details.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
               <span className="text-zinc-400">Started at</span>
-              <span className="text-white">{formatFullTimestamp(trace.steps[0].timestamp)}</span>
+              <span className="text-white">{formatFullTimestamp(trace.created_at)}</span>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <span className="text-zinc-400">Finished at</span>
-              <span className="text-white">
-                {formatFullTimestamp(trace.steps[trace.steps.length - 1].timestamp)}
-              </span>
+              <span className="text-zinc-400">Updated at</span>
+              <span className="text-white">{formatFullTimestamp(trace.updated_at)}</span>
             </div>
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <span className="text-zinc-400">Cost estimate</span>
-              <span className="text-white">${trace.cost.toFixed(3)}</span>
+              <span className="text-zinc-400">Slow request</span>
+              <span className="text-white">{trace.slow_request ? "Yes" : "No"}</span>
             </div>
-            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <span className="text-zinc-400">Captured timestamp</span>
-              <span className="text-white">{formatFullTimestamp(trace.timestamp)}</span>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div className="flex items-center gap-2 text-rose-200">
+                <TriangleAlert className="size-4" />
+                Failure reason
+              </div>
+              <p className="mt-2 text-zinc-300">{trace.failure_reason ?? "No failure recorded."}</p>
             </div>
           </CardContent>
         </Card>
@@ -136,12 +148,12 @@ export default async function TraceDetailPage({
         </CardHeader>
         <CardContent>
           <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-5 text-sm leading-7 text-zinc-200">
-            {trace.response}
+            {trace.response ?? "No response payload captured."}
           </div>
         </CardContent>
       </Card>
 
-      <ExecutionFlow steps={trace.steps} />
+      <ExecutionFlow key={trace.trace_id} steps={trace.steps} />
     </div>
   );
 }

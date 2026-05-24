@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>TraceLLM icon</title>
+  <g stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="256" cy="256" r="188"/>
+    <path d="M183 203C211 173 242 170 272 146C288 133 312 132 330 141C370 162 389 203 385 247C382 284 393 311 421 334"/>
+    <path d="M183 203C166 214 154 232 151 255C147 287 172 307 210 307C246 307 271 296 290 279"/>
+    <path d="M220 307C249 315 280 313 307 308"/>
+    <path d="M299 282C303 316 290 344 271 374C255 400 249 423 256 444"/>
+    <path d="M225 188L274 171"/>
+    <path d="M304 195C316 195 325 204 325 216C325 228 316 237 304 237C292 237 283 228 283 216C283 204 292 195 304 195Z" fill="currentColor" stroke="none"/>
+    <path d="M199 244L186 257"/>
+  </g>
+</svg>

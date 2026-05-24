@@ -1,0 +1,19 @@
+<svg width="1280" height="320" viewBox="0 0 1280 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>TraceLLM wordmark</title>
+  <g color="white">
+    <g transform="translate(24 0)" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="160" cy="160" r="118"/>
+      <path d="M114 127C131 108 151 106 170 91C179 83 194 82 205 88C230 101 242 127 239 154C237 177 244 194 261 208"/>
+      <path d="M114 127C103 134 95 145 93 160C91 180 107 193 131 193C154 193 170 186 182 176"/>
+      <path d="M137 193C155 198 175 197 192 194"/>
+      <path d="M188 178C191 199 183 216 171 235C161 251 157 266 161 280"/>
+      <path d="M140 118L171 107"/>
+      <path d="M190 122C198 122 204 128 204 136C204 144 198 150 190 150C182 150 176 144 176 136C176 128 182 122 190 122Z" fill="currentColor" stroke="none"/>
+      <path d="M124 153L116 161"/>
+    </g>
+    <text x="354" y="203" fill="currentColor" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="128" font-weight="700" letter-spacing="-7">
+      TraceLLM
+    </text>
+    <path d="M354 233H1148" stroke="currentColor" stroke-opacity="0.16" stroke-width="2"/>
+  </g>
+</svg>

@@ -3,6 +3,7 @@
 import { Bell, Command, Search, Wifi } from "lucide-react";
 import { usePathname } from "next/navigation";
 
+import { useObservabilityStream } from "@/components/providers/observability-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +15,10 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
   "/traces": {
     title: "Trace Explorer",
     subtitle: "Inspect prompts, responses, token usage, and trace outcomes.",
+  },
+  "/failures": {
+    title: "Failure Tracking",
+    subtitle: "Surface failed traces, retries, and slow requests before they spread.",
   },
   "/live-logs": {
     title: "Live Logs",
@@ -31,6 +36,15 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
 
 export function TopNavbar() {
   const pathname = usePathname();
+  const {
+    connectionState,
+    projects,
+    selectedEnvironment,
+    selectedProjectId,
+    setSelectedEnvironment,
+    setSelectedProjectId,
+    socketUrl,
+  } = useObservabilityStream();
   const current =
     pageMeta[pathname] ??
     (pathname.startsWith("/traces/")
@@ -48,12 +62,51 @@ export function TopNavbar() {
             <p className="font-heading text-2xl font-semibold tracking-tight text-white">
               {current.title}
             </p>
-            <Badge variant="neutral">Dark mode</Badge>
+            <Badge variant="neutral">
+              {selectedProjectId === "all"
+                ? "All projects"
+                : projects.find((project) => project.project_id === selectedProjectId)?.name ?? selectedProjectId}
+            </Badge>
+            <Badge
+              variant={
+                selectedEnvironment === "production"
+                  ? "failed"
+                  : selectedEnvironment === "staging"
+                    ? "warning"
+                    : "info"
+              }
+            >
+              {selectedEnvironment}
+            </Badge>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-zinc-400">{current.subtitle}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/6 px-3 py-2">
+            <select
+              value={selectedProjectId}
+              onChange={(event) => setSelectedProjectId(event.target.value)}
+              className="bg-transparent text-sm text-white outline-none"
+            >
+              <option value="all">All projects</option>
+              {projects.map((project) => (
+                <option key={project.project_id} value={project.project_id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedEnvironment}
+              onChange={(event) => setSelectedEnvironment(event.target.value)}
+              className="bg-transparent text-sm text-white outline-none"
+            >
+              <option value="all">All envs</option>
+              <option value="development">development</option>
+              <option value="staging">staging</option>
+              <option value="production">production</option>
+            </select>
+          </div>
           <div className="hidden min-w-72 items-center gap-3 rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-zinc-400 shadow-inner md:flex">
             <Search className="size-4 text-zinc-500" />
             <span>Search traces, prompts, agents, models...</span>
@@ -63,7 +116,7 @@ export function TopNavbar() {
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-emerald-400/18 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-200">
             <Wifi className="size-4" />
-            ws://localhost:8000/ws
+            {connectionState} - {socketUrl.replace(/^wss?:\/\//, "")}
           </div>
           <Button
             variant="outline"

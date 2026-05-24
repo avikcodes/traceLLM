@@ -1,3 +1,3 @@
-from sdk.tracer import trace
+from tracellm import trace
 
 __all__ = ["trace"]

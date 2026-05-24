@@ -10,6 +10,7 @@ import {
   Settings,
   Sparkles,
   TableProperties,
+  TriangleAlert,
   X,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/traces", label: "Traces", icon: TableProperties },
+  { href: "/failures", label: "Failures", icon: TriangleAlert },
   { href: "/live-logs", label: "Live Logs", icon: Activity },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -126,15 +128,15 @@ export function Sidebar({
             </p>
             <div className="mt-4 space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Agent sessions</span>
-                <span className="text-white">421 active</span>
+                <span className="text-zinc-400">Stream mode</span>
+                <span className="text-white">Realtime</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Tool calls / min</span>
-                <span className="text-white">18.2K</span>
+                <span className="text-zinc-400">Data source</span>
+                <span className="text-white">MongoDB</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-white/6">
-                <div className="h-full w-[72%] rounded-full bg-linear-to-r from-cyan-400 to-blue-500" />
+                <div className="h-full w-[88%] rounded-full bg-linear-to-r from-cyan-400 to-blue-500" />
               </div>
             </div>
           </div>

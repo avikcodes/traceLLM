@@ -1,5 +1,6 @@
 fastapi
 motor
+pymongo
 python-dotenv
 rich
 typer

@@ -5,7 +5,7 @@ import { Activity, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWebsocketLogs } from "@/hooks/use-websocket-logs";
-import { formatTimestamp } from "@/lib/mock-data";
+import { formatTimestamp } from "@/lib/format";
 import { LiveLogEvent } from "@/lib/types";
 
 const eventVariant: Record<LiveLogEvent["status"], "success" | "warning" | "failed" | "info"> = {
@@ -40,7 +40,7 @@ export function LiveLogsPanel() {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {events.map((event) => (
+          {events.length ? events.map((event) => (
             <div
               key={event.id}
               className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 transition hover:bg-white/[0.05] lg:flex-row lg:items-center lg:justify-between"
@@ -54,7 +54,11 @@ export function LiveLogsPanel() {
               </div>
               <p className="text-sm text-zinc-500">{formatTimestamp(event.timestamp)}</p>
             </div>
-          ))}
+          )) : (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-6 text-sm text-zinc-400">
+              Waiting for realtime websocket events from the backend.
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

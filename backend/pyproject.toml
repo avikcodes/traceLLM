@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tracellm"
+version = "0.1.0"
+description = "TraceLLM SDK and CLI for tracing LLM applications."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "typer",
+    "rich",
+    "motor",
+    "pymongo",
+    "python-dotenv",
+]
+
+[project.scripts]
+tracellm = "tracellm.cli:main"
+
+[tool.setuptools]
+packages = ["tracellm", "sdk", "app", "app.database", "app.models", "app.routes", "app.websocket"]

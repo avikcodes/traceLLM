@@ -17,7 +17,7 @@ import {
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChartPoint } from "@/lib/types";
+import { AnalyticsChartPoint } from "@/lib/types";
 
 function ChartTooltip({
   active,
@@ -73,7 +73,7 @@ export function DashboardCharts({
   data,
   loading,
 }: {
-  data: ChartPoint[];
+  data: AnalyticsChartPoint[];
   loading?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -84,6 +84,7 @@ export function DashboardCharts({
   }, []);
 
   const shouldShowSkeleton = loading || !mounted;
+  const chartData = data.length ? data : [{ label: "No data", latency: 0, tokens: 0, traces: 0 }];
 
   return (
     <div className="grid gap-6 xl:grid-cols-3">
@@ -94,7 +95,7 @@ export function DashboardCharts({
       >
         <div className="h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <LineChart data={chartData}>
               <defs>
                 <linearGradient id="latencyGlow" x1="0" x2="1">
                   <stop offset="0%" stopColor="#22d3ee" />
@@ -125,7 +126,7 @@ export function DashboardCharts({
       >
         <div className="h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
+            <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="tokenFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.85} />
@@ -155,7 +156,7 @@ export function DashboardCharts({
       >
         <div className="h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} barGap={8}>
+            <BarChart data={chartData} barGap={8}>
               <defs>
                 <linearGradient id="tracesFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#60a5fa" />
