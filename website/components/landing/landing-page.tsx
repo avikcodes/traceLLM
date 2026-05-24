@@ -77,10 +77,11 @@ const terminalLogLines = [
 ];
 
 const liveEvents = [
-  { kind: "trace.open", at: "00:00:03", text: "agent/customer-support-runner" },
-  { kind: "ws.push", at: "00:00:04", text: "span:retriever.query.documents" },
-  { kind: "tool.exec", at: "00:00:05", text: "tool/vector_search returned 12 chunks" },
-  { kind: "latency.p95", at: "00:00:06", text: "completion latency crossed 800ms threshold" },
+  { kind: "ws.open", at: "15:08:50", text: "ws://localhost:8000/api/v1/telemetry connected" },
+  { kind: "trace.push", at: "15:08:50", text: "initialized span context: tr_01j8x2a9b4" },
+  { kind: "tool.exec", at: "15:08:51", text: "vector.search completed (142ms, exit: 0)" },
+  { kind: "retry.warn", at: "15:08:52", text: "validation failed: schema validation error" },
+  { kind: "trace.complete", at: "15:08:53", text: "trace context tr_01j8x2a9b4 stored in clickhouse" },
 ];
 
 const fadeInUp = {
@@ -160,120 +161,123 @@ function HeroDashboard() {
       initial="hidden"
       animate="visible"
       transition={{ duration: 0.7, delay: 0.15 }}
-      className="relative mx-auto w-full max-w-2xl"
+      className="relative mx-auto w-full max-w-xl"
     >
-      <div className="panel-glow relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b0b0b] p-4">
-        <div className="absolute inset-0 grid-overlay opacity-20" />
-        <div className="relative flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="h-2.5 w-2.5 rounded-full bg-white" />
-            <p className="font-mono text-xs uppercase tracking-[0.28em] text-neutral-400">
-              realtime trace control center
-            </p>
+      <div className="flex flex-col gap-4 bg-[#050505] p-2 border border-white/[0.06] rounded-2xl shadow-2xl">
+        {/* TOP: Compact Realtime Trace Event Panel */}
+        <div className="border border-white/[0.06] bg-[#0B0B0B] rounded-xl p-4 font-mono text-xs text-[#8A8A8A]">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-2 mb-3">
+            <span className="text-[#F5F5F5] font-semibold text-xs tracking-tight font-sans">Active Trace Context</span>
+            <span className="text-[10px] text-emerald-400 border border-emerald-400/20 bg-emerald-400/5 px-2 py-0.5 rounded font-sans font-medium">
+              RESOLVED
+            </span>
           </div>
-          <StatusBadge>LIVE / WS CONNECTED</StatusBadge>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4">
+            <div>
+              <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Trace ID</span>
+              <span className="text-[#F5F5F5] font-mono select-all">tr_01j8x2a9b4</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Model</span>
+              <span className="text-[#F5F5F5] font-mono">gpt-4o-mini</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Latency</span>
+              <span className="text-amber-400 font-mono font-medium">842ms</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Timestamp</span>
+              <span className="text-[#F5F5F5] font-mono">15:08:52.41</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Retries</span>
+              <span className="text-[#F5F5F5] font-mono">1 / 3 max</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-neutral-500 uppercase tracking-wider mb-0.5">Environment</span>
+              <span className="text-[#F5F5F5] font-mono">production</span>
+            </div>
+          </div>
         </div>
 
-        <div className="relative mt-4 grid gap-4 lg:grid-cols-[1.08fr_0.92fr]">
-          <Card className="border-white/10 bg-white/[0.03]">
-            <CardHeader className="pb-0">
-              <CardTitle className="flex items-center justify-between text-sm text-white">
-                Live Traces
-                <span className="font-mono text-xs text-neutral-500">14 active spans</span>
-              </CardTitle>
-              <CardDescription className="text-neutral-500">
-                Prompt activity, tool edges, and retry markers in a single event plane.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-4">
-              {[
-                { name: "agent.run", time: "84ms", width: "72%" },
-                { name: "tool.retrieve", time: "124ms", width: "48%" },
-                { name: "llm.complete", time: "1.82s", width: "90%" },
-                { name: "retry.guard", time: "312ms", width: "37%" },
-              ].map((item) => (
-                <div key={item.name} className="space-y-2">
-                  <div className="flex items-center justify-between font-mono text-xs text-neutral-300">
-                    <span>{item.name}</span>
-                    <span>{item.time}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/[0.05]">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: item.width }}
-                      transition={{ duration: 0.9, ease: "easeOut" }}
-                      className="h-full rounded-full bg-white/85"
-                    />
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        {/* MIDDLE: Execution Replay Timeline */}
+        <div className="border border-white/[0.06] bg-[#0B0B0B] rounded-xl p-4 font-mono text-xs">
+          <span className="block text-[#F5F5F5] font-semibold text-xs tracking-tight font-sans mb-3">
+            Execution Replay Timeline
+          </span>
+          <div className="space-y-4 relative pl-3.5 border-l border-white/[0.08]">
+            <div className="relative">
+              <div className="absolute -left-[19.5px] top-1.5 h-2 w-2 rounded-full border border-white bg-[#050505]" />
+              <div className="flex items-center justify-between">
+                <span className="text-[#F5F5F5] font-semibold">agent:start</span>
+                <span className="text-[#8A8A8A] text-[10px]">00ms</span>
+              </div>
+              <p className="text-[#8A8A8A] text-[10px] mt-0.5 leading-relaxed">Initializing execution graph for `support_router`</p>
+            </div>
 
-          <div className="grid gap-4">
-            <Card className="border-white/10 bg-white/[0.03]">
-              <CardHeader className="pb-1">
-                <CardTitle className="flex items-center gap-2 text-sm text-white">
-                  <Activity className="size-4 text-neutral-200" />
-                  WebSocket Logs
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 font-mono text-[11px] text-neutral-300 sm:text-xs">
-                {liveEvents.map((event) => (
-                  <div
-                    key={`${event.at}-${event.kind}`}
-                    className="flex items-start justify-between gap-3 rounded-xl border border-white/8 bg-black/40 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-neutral-100">{event.kind}</p>
-                      <p className="mt-1 text-neutral-500">{event.text}</p>
-                    </div>
-                    <span className="text-neutral-600">{event.at}</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <div className="relative">
+              <div className="absolute -left-[19.5px] top-1.5 h-2 w-2 rounded-full border border-neutral-500 bg-[#050505]" />
+              <div className="flex items-center justify-between">
+                <span className="text-[#F5F5F5] font-semibold">tool:retrieve</span>
+                <span className="text-[#8A8A8A] text-[10px]">+142ms</span>
+              </div>
+              <p className="text-[#8A8A8A] text-[10px] mt-0.5 leading-relaxed">Querying VectorStore client: `vector.search` matching "billing error"</p>
+            </div>
 
-            <Card className="border-white/10 bg-white/[0.03]">
-              <CardHeader className="pb-1">
-                <CardTitle className="flex items-center justify-between text-sm text-white">
-                  Latency + Replay
-                  <span className="font-mono text-xs text-neutral-500">p95 watch</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/8 bg-black/35 p-3">
-                  <div className="flex items-end gap-2">
-                    {[34, 52, 46, 74, 61, 88, 58, 72].map((height, index) => (
-                      <motion.span
-                        key={height + index}
-                        initial={{ height: 0 }}
-                        animate={{ height }}
-                        transition={{ duration: 0.7, delay: index * 0.05 }}
-                        className={cn("w-full rounded-t-full bg-white/80", index === 5 && "bg-white")}
-                      />
-                    ))}
-                  </div>
-                  <p className="mt-3 font-mono text-xs text-neutral-500">Latency histogram</p>
-                </div>
-                <div className="rounded-2xl border border-white/8 bg-black/35 p-3">
-                  <div className="space-y-2">
-                    {["agent:start", "tool:retrieve", "llm:call", "retry", "success"].map(
-                      (item, index) => (
-                        <div key={item} className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[10px] font-mono text-neutral-200">
-                            {index + 1}
-                          </span>
-                          <div className="h-px flex-1 bg-gradient-to-r from-white/30 to-transparent" />
-                          <span className="font-mono text-xs text-neutral-300">{item}</span>
-                        </div>
-                      )
-                    )}
-                  </div>
-                  <p className="mt-3 font-mono text-xs text-neutral-500">Replay execution path</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="relative">
+              <div className="absolute -left-[19.5px] top-1.5 h-2 w-2 rounded-full border border-neutral-500 bg-[#050505]" />
+              <div className="flex items-center justify-between">
+                <span className="text-[#F5F5F5] font-semibold">llm:call</span>
+                <span className="text-[#8A8A8A] text-[10px]">+320ms</span>
+              </div>
+              <p className="text-[#8A8A8A] text-[10px] mt-0.5 leading-relaxed">Sending payload to `gpt-4o-mini` (4.2k tokens, 1.2s timeout)</p>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-[19.5px] top-1.5 h-2 w-2 rounded-full border border-amber-500 bg-[#050505]" />
+              <div className="flex items-center justify-between">
+                <span className="text-amber-400 font-semibold">retry</span>
+                <span className="text-amber-400 text-[10px]">+1.52s</span>
+              </div>
+              <p className="text-amber-500/80 text-[10px] mt-0.5 leading-relaxed">Structured output schema mismatch (missing key: `action_required` · retrying)</p>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-[19.5px] top-1.5 h-2 w-2 rounded-full border border-emerald-400 bg-emerald-400" />
+              <div className="flex items-center justify-between">
+                <span className="text-emerald-400 font-semibold">success</span>
+                <span className="text-emerald-400 text-[10px]">+2.14s</span>
+              </div>
+              <p className="text-[#8A8A8A] text-[10px] mt-0.5 leading-relaxed">Valid output format schema returned. Execution trace finalized.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* BOTTOM: Structured WebSocket Log Stream */}
+        <div className="border border-white/[0.06] bg-[#0B0B0B] rounded-xl p-4 font-mono text-[11px] leading-relaxed">
+          <span className="block text-[#F5F5F5] font-semibold text-xs tracking-tight font-sans mb-3">
+            WebSocket Telemetry Stream
+          </span>
+          <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+            {liveEvents.map((event, index) => (
+              <div
+                key={`${event.kind}-${index}`}
+                className="flex items-start gap-2 border-b border-white/[0.02] pb-1.5 last:border-0 last:pb-0"
+              >
+                <span className="text-neutral-600 text-[10px] mt-0.5 select-none">{event.at}</span>
+                <span className={cn(
+                  "font-semibold font-mono whitespace-nowrap",
+                  event.kind === "ws.open" && "text-sky-400",
+                  event.kind === "trace.push" && "text-[#F5F5F5]",
+                  event.kind === "tool.exec" && "text-emerald-400",
+                  event.kind === "retry.warn" && "text-amber-400",
+                  event.kind === "trace.complete" && "text-emerald-400"
+                )}>
+                  [{event.kind}]
+                </span>
+                <span className="text-[#8A8A8A] truncate flex-1">{event.text}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -292,38 +296,50 @@ function StatBlock({ label, value }: { label: string; value: string }) {
 
 export function LandingPage() {
   return (
-    <main className="relative overflow-hidden bg-black text-white">
-      <div className="pointer-events-none absolute inset-0 grid-overlay opacity-10" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_34%)]" />
+    <main className="relative overflow-hidden bg-background text-foreground">
+      <motion.header
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55 }}
+        className="sticky top-0 z-50 w-full h-20 bg-[#050505]/80 backdrop-blur-md border-b border-white/[0.06] flex items-center justify-between px-6 sm:px-12"
+      >
+        <div className="flex items-center gap-3">
+          <Activity className="size-5 text-[#F5F5F5]" />
+          <div className="flex flex-col leading-none">
+            <span className="text-sm font-semibold tracking-wider text-[#F5F5F5] font-sans">TraceLLM</span>
+            <span className="font-mono text-[9px] tracking-wide text-[#8A8A8A] mt-1">
+              open-source observability infrastructure
+            </span>
+          </div>
+        </div>
 
-      <section className="relative border-b border-white/8">
-        <div className="mx-auto max-w-7xl px-6 pb-20 pt-6 sm:px-8 lg:px-10">
-          <motion.header
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55 }}
-            className="flex flex-col gap-4 rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between"
+        <nav className="flex items-center gap-4 sm:gap-8 text-xs sm:text-sm font-medium font-sans">
+          <a href="#features" className="text-[#8A8A8A] transition-colors duration-200 hover:text-[#F5F5F5]">
+            Features
+          </a>
+          <a href="#architecture" className="text-[#8A8A8A] transition-colors duration-200 hover:text-[#F5F5F5]">
+            Architecture
+          </a>
+          <a href="#replay" className="text-[#8A8A8A] transition-colors duration-200 hover:text-[#F5F5F5]">
+            Replay
+          </a>
+          <a href="#opensource" className="text-[#8A8A8A] transition-colors duration-200 hover:text-[#F5F5F5]">
+            Open Source
+          </a>
+          <a
+            href="https://github.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[#8A8A8A] transition-colors duration-200 hover:text-[#F5F5F5]"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                <Activity className="size-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold tracking-[0.16em] text-white">TraceLLM</p>
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-neutral-500">
-                  open-source observability
-                </p>
-              </div>
-            </div>
-            <nav className="flex flex-wrap items-center gap-5 text-sm text-neutral-400">
-              <a href="#features" className="transition hover:text-white">Features</a>
-              <a href="#architecture" className="transition hover:text-white">Architecture</a>
-              <a href="#replay" className="transition hover:text-white">Replay</a>
-              <a href="#opensource" className="transition hover:text-white">Open Source</a>
-            </nav>
-          </motion.header>
+            GitHub
+          </a>
+        </nav>
+      </motion.header>
 
-          <div className="mt-16 grid items-center gap-14 lg:grid-cols-[0.98fr_1.02fr] lg:gap-14">
+      <section className="relative border-b border-white/6">
+        <div className="mx-auto max-w-7xl px-6 pb-20 pt-12 sm:px-8 lg:px-10">
+          <div className="grid items-center gap-14 lg:grid-cols-[0.98fr_1.02fr] lg:gap-14">
             <motion.div
               initial="hidden"
               animate="visible"
@@ -335,7 +351,7 @@ export function LandingPage() {
                 Minimal Observability Control Plane
               </Badge>
               <h1 className="mt-6 max-w-3xl text-5xl font-semibold tracking-[-0.075em] text-white sm:text-6xl lg:text-7xl">
-                Understand <span className="text-gradient">Every LLM Call.</span>
+                Understand Every LLM Call.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-neutral-400 sm:text-xl">
                 Trace prompts, latency, token usage, retries, tool calls, and execution
@@ -366,9 +382,9 @@ export function LandingPage() {
               </div>
 
               <div className="mt-10 grid gap-4 sm:grid-cols-3">
-                <StatBlock label="Live traces" value="12.4M/day" />
-                <StatBlock label="p95 updates" value="<250ms" />
-                <StatBlock label="Terminal-first" value="SDK + CLI" />
+                <StatBlock label="Telemetry Spec" value="OpenTelemetry" />
+                <StatBlock label="Ingestion Mode" value="SDK + API" />
+                <StatBlock label="Storage Backend" value="ClickHouse" />
               </div>
             </motion.div>
 
