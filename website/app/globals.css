@@ -49,76 +49,74 @@
 }
 
 :root {
-  --font-space-grotesk:
-    "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-jetbrains-mono:
-    "Consolas", "SFMono-Regular", "Liberation Mono", "Courier New", monospace;
-  --background: #050505;
-  --foreground: #F5F5F5;
-  --card: #0B0B0B;
-  --card-foreground: #F5F5F5;
-  --popover: #0B0B0B;
-  --popover-foreground: #F5F5F5;
-  --primary: #F5F5F5;
-  --primary-foreground: #050505;
-  --secondary: #0B0B0B;
-  --secondary-foreground: #F5F5F5;
-  --muted: #0B0B0B;
-  --muted-foreground: #8A8A8A;
-  --accent: #0B0B0B;
-  --accent-foreground: #F5F5F5;
+  --font-space-grotesk: "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-jetbrains-mono: "Consolas", "SFMono-Regular", "Liberation Mono", "Courier New", monospace;
+  --background: #07040B;
+  --foreground: #F5F3FF;
+  --card: #151021;
+  --card-foreground: #F5F3FF;
+  --popover: #151021;
+  --popover-foreground: #F5F3FF;
+  --primary: #7C5CFF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #0F0A17;
+  --secondary-foreground: #F5F3FF;
+  --muted: #0F0A17;
+  --muted-foreground: #6E6785;
+  --accent: #7C5CFF;
+  --accent-foreground: #FFFFFF;
   --destructive: oklch(0.7 0.19 22);
-  --border: rgba(255, 255, 255, 0.06);
-  --input: rgba(255, 255, 255, 0.06);
-  --ring: rgba(255, 255, 255, 0.2);
+  --border: rgba(124, 92, 255, 0.1);
+  --input: rgba(124, 92, 255, 0.12);
+  --ring: rgba(182, 168, 255, 0.2);
   --chart-1: oklch(0.88 0 0);
   --chart-2: oklch(0.76 0 0);
   --chart-3: oklch(0.64 0 0);
   --chart-4: oklch(0.54 0 0);
   --chart-5: oklch(0.42 0 0);
-  --radius: 1rem;
-  --sidebar: #0B0B0B;
-  --sidebar-foreground: #F5F5F5;
-  --sidebar-primary: #F5F5F5;
-  --sidebar-primary-foreground: #050505;
-  --sidebar-accent: #0B0B0B;
-  --sidebar-accent-foreground: #F5F5F5;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: rgba(255, 255, 255, 0.2);
+  --radius: 0.75rem;
+  --sidebar: #0F0A17;
+  --sidebar-foreground: #F5F3FF;
+  --sidebar-primary: #7C5CFF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #7C5CFF;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(124, 92, 255, 0.1);
+  --sidebar-ring: rgba(182, 168, 255, 0.2);
 }
 
 .dark {
-  --background: #050505;
-  --foreground: #F5F5F5;
-  --card: #0B0B0B;
-  --card-foreground: #F5F5F5;
-  --popover: #0B0B0B;
-  --popover-foreground: #F5F5F5;
-  --primary: #F5F5F5;
-  --primary-foreground: #050505;
-  --secondary: #0B0B0B;
-  --secondary-foreground: #F5F5F5;
-  --muted: #0B0B0B;
-  --muted-foreground: #8A8A8A;
-  --accent: #0B0B0B;
-  --accent-foreground: #F5F5F5;
+  --background: #07040B;
+  --foreground: #F5F3FF;
+  --card: #151021;
+  --card-foreground: #F5F3FF;
+  --popover: #151021;
+  --popover-foreground: #F5F3FF;
+  --primary: #7C5CFF;
+  --primary-foreground: #FFFFFF;
+  --secondary: #0F0A17;
+  --secondary-foreground: #F5F3FF;
+  --muted: #0F0A17;
+  --muted-foreground: #6E6785;
+  --accent: #7C5CFF;
+  --accent-foreground: #FFFFFF;
   --destructive: oklch(0.7 0.19 22);
-  --border: rgba(255, 255, 255, 0.06);
-  --input: rgba(255, 255, 255, 0.06);
-  --ring: rgba(255, 255, 255, 0.2);
+  --border: rgba(124, 92, 255, 0.1);
+  --input: rgba(124, 92, 255, 0.12);
+  --ring: rgba(182, 168, 255, 0.2);
   --chart-1: oklch(0.88 0 0);
   --chart-2: oklch(0.76 0 0);
   --chart-3: oklch(0.64 0 0);
   --chart-4: oklch(0.54 0 0);
   --chart-5: oklch(0.42 0 0);
-  --sidebar: #0B0B0B;
-  --sidebar-foreground: #F5F5F5;
-  --sidebar-primary: #F5F5F5;
-  --sidebar-primary-foreground: #050505;
-  --sidebar-accent: #0B0B0B;
-  --sidebar-accent-foreground: #F5F5F5;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: rgba(255, 255, 255, 0.2);
+  --sidebar: #0F0A17;
+  --sidebar-foreground: #F5F3FF;
+  --sidebar-primary: #7C5CFF;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #7C5CFF;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(124, 92, 255, 0.1);
+  --sidebar-ring: rgba(182, 168, 255, 0.2);
 }
 
 @layer base {
@@ -132,45 +130,42 @@
 
   body {
     @apply min-h-screen bg-background text-foreground;
-    background-color: #050505;
+    background-color: #07040B;
   }
 
   ::selection {
-    background: rgba(255, 255, 255, 0.18);
-    color: white;
+    background: rgba(124, 92, 255, 0.2);
+    color: #F5F3FF;
   }
 }
 
 @layer utilities {
-  .grid-overlay {
+  .grid-bg {
     background-image:
-      linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 48px 48px;
-    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), transparent);
   }
 
-  .panel-glow {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.04),
-      0 20px 80px rgba(0, 0, 0, 0.5),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  .grid-bg-faded {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
   }
 
-  .text-gradient {
-    background: linear-gradient(180deg, #ffffff 0%, #a3a3a3 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .noise-bg {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
   }
 
-  .terminal-scanlines {
-    background-image: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.03) 0,
-      rgba(255, 255, 255, 0) 50%,
-      rgba(255, 255, 255, 0.02) 100%
-    );
-    background-size: 100% 6px;
+  .radial-glow {
+    background: radial-gradient(ellipse 50% 40% at 50% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }
