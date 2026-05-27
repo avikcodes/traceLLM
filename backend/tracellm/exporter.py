@@ -2,10 +2,13 @@ import json
 from pathlib import Path
 
 from tracellm.db import fetch_recent_traces
-from tracellm.utils import console, ensure_export_dir, export_timestamp, write_csv
+from tracellm.utils import console, ensure_export_dir, export_timestamp, render_export_success, write_csv
 
 
 def export_traces(export_format: str, limit: int = 100) -> Path:
+    console.print()
+    console.print("[bold white]Exporting traces...[/bold white]")
+
     traces = fetch_recent_traces(limit=limit)
     export_dir = ensure_export_dir()
     timestamp = export_timestamp()
@@ -58,5 +61,5 @@ def export_traces(export_format: str, limit: int = 100) -> Path:
             ],
         )
 
-    console.print(f"[bold green]Export created[/bold green] [dim]{path}[/dim]")
+    render_export_success(path, len(traces))
     return path

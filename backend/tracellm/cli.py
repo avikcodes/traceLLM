@@ -3,6 +3,7 @@ import typer
 from tracellm.db import create_project_with_key
 from tracellm.exporter import export_traces
 from tracellm.replay import replay_trace
+from tracellm.startup import run_start
 from tracellm.tracer import llm_response, run_live_trace
 from tracellm.utils import console, render_project_credentials
 
@@ -13,10 +14,22 @@ app = typer.Typer(help="TraceLLM SDK and developer CLI.")
 def demo() -> None:
     """Generate a realistic demo trace."""
     result = llm_response()
-    console.print(
-        f"[bold green]Demo completed[/bold green] "
-        f"[dim]({result.get('retry_count', 0)} retries, {len(result.get('steps', []))} steps)[/dim]"
-    )
+    retries = result.get("retry_count", 0)
+    steps = len(result.get("steps", []))
+    console.print()
+    console.print("[bold white]Demo complete[/bold white]")
+    console.print(f"[bright_black]{steps} steps, {retries} retries[/bright_black]")
+    console.print()
+
+
+@app.command()
+def start(
+    port: int = typer.Option(8000, "--port", "-p", help="Port for the API server."),
+    dashboard: bool = typer.Option(False, "--dashboard", "-d", help="Open the dashboard in your browser."),
+    dashboard_port: int = typer.Option(3000, "--dashboard-port", help="Port for the frontend dashboard."),
+) -> None:
+    """Start the TraceLLM observability stack (backend + dashboard)."""
+    run_start(port=port, dashboard_port=dashboard_port, launch_dashboard=dashboard)
 
 
 @app.command("trace")

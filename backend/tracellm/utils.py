@@ -13,6 +13,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 from rich.rule import Rule
 from rich.table import Table
 from rich.text import Text
+from rich.tree import Tree
 
 console = Console()
 SLOW_TRACE_THRESHOLD_MS = 1500.0
@@ -155,80 +156,159 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str]) -> 
         writer.writerows(rows)
 
 
+def render_status_badge(status: str) -> Text:
+    normalized = status.lower()
+    if normalized == "success":
+        return Text(" SUCCESS ", style="bold white on #1a6b3c")
+    if normalized == "warning":
+        return Text(" WARNING ", style="bold #1a1a1a on #b8860b")
+    return Text(" FAILED ", style="bold white on #8b1a1a")
+
+
 def build_trace_summary_table(trace_data: dict[str, Any]) -> Table:
-    table = Table(show_header=False, box=None, pad_edge=False)
-    table.add_column("Field", style="cyan", no_wrap=True)
-    table.add_column("Value", style="white")
+    table = Table.grid(padding=(0, 3), collapse_padding=True)
+    table.add_column(style="bright_black", no_wrap=True)
+    table.add_column(style="white")
     table.add_row("Trace ID", str(trace_data["trace_id"]))
-    table.add_row("Prompt", str(trace_data["prompt"]))
+    table.add_row("Prompt", str(trace_data["prompt"])[:80])
     table.add_row("Model", str(trace_data["model_name"]))
     table.add_row("Project", str(trace_data.get("project_name") or trace_data.get("project_id") or "default"))
     table.add_row(
         "Environment",
         f'[{environment_style(str(trace_data.get("environment") or "development"))}]{str(trace_data.get("environment") or "development")}[/]',
     )
-    table.add_row("Latency", f'[{latency_style(float(trace_data["latency"]))}]{float(trace_data["latency"]):.2f} ms[/]')
-    table.add_row("Token Count", str(trace_data["token_count"]))
-    table.add_row("Status", f'[{status_style(str(trace_data["status"]))}]{str(trace_data["status"]).upper()}[/]')
+    latency = float(trace_data["latency"])
+    table.add_row("Latency", f'[{latency_style(latency)}]{latency:.2f} ms[/]')
+    table.add_row("Token Count", f"{trace_data['token_count']:,}")
     table.add_row("Retries", str(trace_data["retry_count"]))
     table.add_row("Steps", str(len(trace_data["steps"])))
+    status_badge = render_status_badge(str(trace_data["status"]))
+    table.add_row("Status", status_badge)
     return table
 
 
 def build_steps_table(steps: list[dict[str, Any]]) -> Table:
-    table = Table(title="Tool Steps")
-    table.add_column("#", style="cyan", width=4)
-    table.add_column("Tool", style="magenta")
-    table.add_column("Duration", justify="right")
+    table = Table(title="  Steps", box=None, padding=(0, 2), header_style="dim")
+    table.add_column("#", style="bright_black", width=3)
+    table.add_column("Tool", style="white")
+    table.add_column("Duration", justify="right", style="bright_black")
     table.add_column("Status", justify="center")
+    table.add_column("Detail", style="dim")
     for index, step in enumerate(steps, start=1):
         success = bool(step.get("success", True))
         duration = float(step.get("duration", 0.0))
+        detail = ""
+        if not success:
+            detail = "retry"
+        elif duration >= SLOW_TRACE_THRESHOLD_MS:
+            detail = "spike"
         table.add_row(
             str(index),
             str(step.get("tool_name", "unknown")),
-            f'[{latency_style(duration)}]{duration:.2f} ms[/]',
+            f'[{latency_style(duration)}]{duration:.0f} ms[/]',
             "[green]OK[/]" if success else "[red]RETRY[/]",
+            detail,
         )
     return table
 
 
-def render_trace_report(trace_data: dict[str, Any]) -> None:
-    console.print(Rule("[bold cyan]TraceLLM Trace Summary[/bold cyan]"))
-    console.print(Panel(build_trace_summary_table(trace_data), border_style="cyan"))
-    console.print(build_steps_table(trace_data["steps"]))
-
-    response_preview = str(trace_data.get("response") or "")
-    console.print(
-        Panel.fit(
-            response_preview[:900] + ("..." if len(response_preview) > 900 else ""),
-            title="LLM Response Preview",
-            border_style="green",
-        )
+def render_trace_panel(trace_data: dict[str, Any], title: str = "Trace") -> Panel:
+    return Panel(
+        build_trace_summary_table(trace_data),
+        title=f"[bold]{title}[/bold]",
+        subtitle=f"[{status_style(str(trace_data['status']))}]{str(trace_data['status']).upper()}[/]",
+        border_style="bright_black",
+        padding=(1, 2),
     )
+
+
+def render_trace_report(trace_data: dict[str, Any]) -> None:
+    console.print()
+    console.print(render_trace_panel(trace_data, "TraceLLM Trace"))
+    console.print()
+    console.print(build_steps_table(trace_data["steps"]))
+    console.print()
+    response_preview = str(trace_data.get("response") or "")
+    if response_preview:
+        console.print(
+            Panel.fit(
+                response_preview[:600] + ("..." if len(response_preview) > 600 else ""),
+                title="Response Preview",
+                border_style="bright_black",
+                padding=(1, 2),
+            )
+        )
+        console.print()
+
+
+def render_replay_tree(
+    steps: list[dict[str, Any]],
+    active_index: int | None = None,
+) -> Tree:
+    tree = Tree("", hide_root=True)
+    for i, step in enumerate(steps, 1):
+        tool_name = step.get("tool_name", "unknown")
+        duration = float(step.get("duration", 0.0))
+        success = bool(step.get("success", True))
+        dur_str = f"[bright_black]{duration:.0f}ms[/bright_black]"
+        if active_index == i:
+            branch = tree.add(f"[cyan]▶[/cyan] [white]{tool_name}[/white] {dur_str}")
+        elif active_index is not None and i < active_index:
+            status = "[green]OK[/green]" if success else "[red]RETRY[/red]"
+            branch = tree.add(f"[green]✓[/green] [dim]{tool_name}[/dim] {dur_str} {status}")
+        elif active_index is not None and i > active_index:
+            branch = tree.add(f"  [dim]{tool_name}[/dim] {dur_str}")
+        else:
+            status = "[green]OK[/green]" if success else "[red]RETRY[/red]"
+            branch = tree.add(f"  [white]{tool_name}[/white] {dur_str} {status}")
+    return tree
 
 
 def render_replay_report(trace_result: dict[str, Any]) -> None:
-    console.print(Rule("[bold cyan]TraceLLM Replay Snapshot[/bold cyan]"))
-    console.print(build_steps_table(trace_result.get("steps", [])))
+    steps = trace_result.get("steps", [])
+    console.print()
+    console.print("Replay complete", style="bold white")
+    console.print()
+    tree = render_replay_tree(steps, active_index=len(steps))
+    console.print(Panel(tree, border_style="bright_black", padding=(1, 2)))
+    console.print()
 
 
-def build_live_trace_screen(prompt: str, model_name: str, finished_steps: list[dict[str, Any]], current_label: str) -> Panel:
+def build_progress_bar(description: str, total: int) -> Progress:
     progress = Progress(
-        SpinnerColumn(style="cyan"),
-        TextColumn("[bold white]{task.description}"),
-        BarColumn(bar_width=28),
-        TextColumn("{task.completed}/{task.total}"),
+        SpinnerColumn(style="white"),
+        TextColumn("[bright_black]{task.description}"),
+        BarColumn(bar_width=24, style="bright_black", pulse_style="white"),
+        TextColumn("[bright_black]{task.completed}/{task.total}[/bright_black]"),
         TimeElapsedColumn(),
         expand=True,
     )
-    task_id = progress.add_task(current_label, total=max(1, len(finished_steps) + 1), completed=len(finished_steps))
+    progress.add_task(description, total=total)
+    return progress
 
-    timeline = Table(show_header=True, box=None, pad_edge=False)
-    timeline.add_column("Step", style="cyan", width=4)
-    timeline.add_column("Tool", style="magenta")
-    timeline.add_column("Latency", justify="right")
-    timeline.add_column("Signal", style="white")
+
+def build_live_trace_screen(
+    prompt: str,
+    model_name: str,
+    finished_steps: list[dict[str, Any]],
+    current_label: str,
+) -> Panel:
+    progress = Progress(
+        SpinnerColumn(style="white"),
+        TextColumn("[white]{task.description}"),
+        BarColumn(bar_width=28, style="bright_black", complete_style="white"),
+        TextColumn("[bright_black]{task.completed}/{task.total}[/bright_black]"),
+        TimeElapsedColumn(),
+        expand=True,
+    )
+    total = max(1, len(finished_steps) + 1)
+    task_id = progress.add_task(current_label, total=total, completed=len(finished_steps))
+
+    timeline = Table.grid(padding=(0, 2))
+    timeline.add_column(style="bright_black", width=3)
+    timeline.add_column(style="white")
+    timeline.add_column(style="bright_black", justify="right")
+    timeline.add_column(style="bright_black")
 
     for index, step in enumerate(finished_steps[-5:], start=max(1, len(finished_steps) - 4)):
         duration = float(step.get("duration", 0.0))
@@ -244,28 +324,30 @@ def build_live_trace_screen(prompt: str, model_name: str, finished_steps: list[d
 
     body = Group(
         Align.left(Text(prompt, style="bold white")),
-        Text(f"model: {model_name}", style="dim"),
-        Rule(style="dim"),
+        Text(f"model: {model_name}", style="bright_black"),
+        Rule(style="bright_black"),
         progress,
-        Rule(style="dim"),
+        Rule(style="bright_black"),
         timeline,
     )
     progress.update(task_id, completed=len(finished_steps))
-    return Panel(body, title="Live Trace", border_style="cyan")
+    return Panel(body, title="Live Trace", border_style="bright_black", padding=(1, 2))
 
 
 def trace_command_footer(trace_data: dict[str, Any]) -> None:
+    status = str(trace_data["status"])
+    badge = render_status_badge(status)
     console.print(
         Panel.fit(
-            f"[bold]trace_id[/bold] {trace_data['trace_id']}\n"
-            f"[bold]project[/bold] {trace_data.get('project_name') or trace_data.get('project_id') or 'default'}\n"
-            f"[bold]environment[/bold] [{environment_style(str(trace_data.get('environment') or 'development'))}]{trace_data.get('environment') or 'development'}[/]\n"
-            f"[bold]status[/bold] [{status_style(str(trace_data['status']))}]{str(trace_data['status']).upper()}[/]\n"
-            f"[bold]latency[/bold] {float(trace_data['latency']):.2f} ms\n"
-            f"[bold]tokens[/bold] {trace_data['token_count']}\n"
-            f"[bold]retries[/bold] {trace_data['retry_count']}",
+            f"[bright_black]trace_id[/bright_black] {trace_data['trace_id']}\n"
+            f"[bright_black]model[/bright_black] {trace_data.get('model_name', 'unknown')}\n"
+            f"[bright_black]latency[/bright_black] {float(trace_data['latency']):.2f} ms\n"
+            f"[bright_black]tokens[/bright_black] {trace_data['token_count']:,}\n"
+            f"[bright_black]retries[/bright_black] {trace_data['retry_count']}\n"
+            f"{badge}",
             title="Trace Complete",
-            border_style="green" if str(trace_data["status"]).lower() == "success" else "yellow",
+            border_style="bright_black",
+            padding=(1, 2),
         )
     )
 
@@ -277,14 +359,32 @@ def render_project_credentials(
     api_key: str,
     description: str,
 ) -> None:
+    console.print()
     console.print(
         Panel.fit(
-            f"[bold]project[/bold] {name}\n"
-            f"[bold]project_id[/bold] {project_id}\n"
-            f"[bold]environment[/bold] [{environment_style(environment)}]{environment}[/]\n"
-            f"[bold]api_key[/bold] {api_key}\n"
-            f"[bold]description[/bold] {description or 'n/a'}",
+            f"[bold white]{name}[/bold white]\n\n"
+            f"[bright_black]project_id[/bright_black]  {project_id}\n"
+            f"[bright_black]env[/bright_black]         [{environment_style(environment)}]{environment}[/]\n"
+            f"[bright_black]api_key[/bright_black]     [bold]{api_key}[/bold]\n"
+            f"[bright_black]desc[/bright_black]        {description or 'n/a'}\n\n"
+            f"[dim]Save this key — it will not be shown again.[/dim]",
             title="Project Credentials",
-            border_style="cyan",
+            border_style="bright_black",
+            padding=(1, 2),
         )
     )
+    console.print()
+
+
+def render_export_success(path: Path, count: int) -> None:
+    console.print()
+    console.print(
+        Panel.fit(
+            f"[bold white]{count} traces exported[/bold white]\n"
+            f"[dim]{path}[/dim]",
+            title="Export Complete",
+            border_style="bright_black",
+            padding=(1, 2),
+        )
+    )
+    console.print()
