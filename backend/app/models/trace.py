@@ -1,7 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 TraceStatus = Literal["success", "warning", "failed"]
@@ -23,7 +27,7 @@ class StepSchema(MongoFriendlyModel):
     output: dict[str, Any] = Field(default_factory=dict)
     duration: float
     success: bool
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=_utcnow)
 
     @field_validator("duration")
     @classmethod
@@ -49,8 +53,8 @@ class TraceSchema(MongoFriendlyModel):
     retry_count: int = 0
     slow_request: bool = False
     failure_reason: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
     @field_validator("latency")
     @classmethod

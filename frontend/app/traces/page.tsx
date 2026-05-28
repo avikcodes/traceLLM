@@ -1,64 +1,123 @@
 "use client";
 
+import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 
-import { TracesTable } from "@/components/traces/traces-table";
 import { useRealtimeTraces } from "@/hooks/use-observability-data";
+import { formatDuration, formatTimestamp } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export default function TracesPage() {
-  const [filters, setFilters] = useState({
-    status: "",
-    model: "",
-    latency_min: "",
-    latency_max: "",
-    token_min: "",
-    token_max: "",
-  });
-  const deferredFilters = useDeferredValue(filters);
-  const { items, loading } = useRealtimeTraces({
-    status: deferredFilters.status || undefined,
-    model: deferredFilters.model || undefined,
-    latency_min: deferredFilters.latency_min ? Number(deferredFilters.latency_min) : undefined,
-    latency_max: deferredFilters.latency_max ? Number(deferredFilters.latency_max) : undefined,
-    token_min: deferredFilters.token_min ? Number(deferredFilters.token_min) : undefined,
-    token_max: deferredFilters.token_max ? Number(deferredFilters.token_max) : undefined,
-    limit: 100,
-  });
+  const [search, setSearch] = useState("");
+  const { items, loading } = useRealtimeTraces({ limit: 100 });
+  const deferredSearch = useDeferredValue(search);
+
+  const filtered = deferredSearch
+    ? items.filter(
+        (t) =>
+          t.trace_id.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+          t.prompt.toLowerCase().includes(deferredSearch.toLowerCase()) ||
+          (t.model_name ?? "").toLowerCase().includes(deferredSearch.toLowerCase())
+      )
+    : items;
 
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 lg:grid-cols-4">
-        {[
-          ["Status", "status", "success | warning | failed"],
-          ["Model", "model", "gpt-4.1-mini"],
-          ["Min latency", "latency_min", "500"],
-          ["Max latency", "latency_max", "2000"],
-          ["Min tokens", "token_min", "1000"],
-          ["Max tokens", "token_max", "10000"],
-        ].map(([label, key, placeholder]) => (
-          <label
-            key={key}
-            className="rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-zinc-300"
-          >
-            <span className="mb-3 block text-xs uppercase tracking-[0.24em] text-zinc-500">{label}</span>
-            <input
-              value={filters[key as keyof typeof filters]}
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, [key]: event.target.value }))
-              }
-              placeholder={placeholder}
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none transition focus:border-cyan-400/30"
-            />
-          </label>
-        ))}
-      </section>
+    <div className="flex flex-col h-full p-4">
+      <div className="flex items-center gap-3 mb-4">
+        <h1 className="text-sm font-semibold text-foreground">Traces</h1>
+        <div className="flex-1 max-w-md">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by ID, prompt, model..."
+            className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent/50 transition-colors placeholder:text-muted/50"
+          />
+        </div>
+        <span className="text-sm text-muted">{filtered.length} results</span>
+      </div>
 
-      <TracesTable
-        traces={items}
-        loading={loading}
-        title="Trace Inventory"
-        description="Browse real traces and filter by latency, status, model, and token volume."
-      />
+      {loading ? (
+        <div className="card flex-1 flex items-center justify-center">
+          <div className="text-sm text-muted">Loading...</div>
+        </div>
+      ) : (
+        <div className="card flex-1 overflow-hidden">
+          <div className="overflow-x-auto h-full">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-border text-muted">
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Trace ID</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Prompt</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Model</th>
+                  <th className="text-right px-4 py-3 font-medium text-xs uppercase tracking-wider">Latency</th>
+                  <th className="text-right px-4 py-3 font-medium text-xs uppercase tracking-wider">Tokens</th>
+                  <th className="text-right px-4 py-3 font-medium text-xs uppercase tracking-wider">Retries</th>
+                  <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Time</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((trace) => (
+                  <tr
+                    key={trace.trace_id}
+                    className="border-b border-border/50 hover:bg-surface-hover transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <span className={cn(
+                        "text-xs font-medium",
+                        trace.status === "success" ? "text-accent" :
+                        trace.status === "warning" ? "text-warning" :
+                        trace.status === "failed" ? "text-error" : "text-muted"
+                      )}>
+                        {trace.status === "success" ? "Success" :
+                         trace.status === "warning" ? "Warning" :
+                         trace.status === "failed" ? "Failed" : trace.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-mono text-muted">{trace.trace_id.slice(0, 12)}</span>
+                    </td>
+                    <td className="px-4 py-3 text-foreground max-w-xs truncate">
+                      {trace.prompt}
+                    </td>
+                    <td className="px-4 py-3 text-muted">
+                      {trace.model_name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right text-foreground">
+                      {formatDuration(trace.latency)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-foreground">
+                      {trace.token_count.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right text-muted">
+                      {trace.retry_count > 0 ? trace.retry_count : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted whitespace-nowrap">
+                      {formatTimestamp(trace.created_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/traces/${trace.trace_id}`}
+                        className="text-sm text-muted hover:text-accent transition-colors no-underline font-medium"
+                      >
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="text-center py-12 text-sm text-muted">
+                      No traces found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

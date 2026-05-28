@@ -225,7 +225,7 @@ def _serialize_traces(documents: list[dict[str, Any]]) -> list[TraceSchema]:
     return traces
 
 
-async def save_trace(trace_data: dict[str, Any]) -> dict[str, Any]:
+async def save_trace(trace_data: dict[str, Any]) -> dict[str, Any] | None:
     """Insert a trace payload into MongoDB and broadcast it to connected dashboards."""
     try:
         db = await get_database_connection()
@@ -239,9 +239,15 @@ async def save_trace(trace_data: dict[str, Any]) -> dict[str, Any]:
         await manager.broadcast({"type": "trace.created", "trace": TraceSchema.model_validate(document).model_dump(mode="json")})
         return document
     except Exception as error:
-        console.print(f"[bold red]Failed to save trace:[/bold red] {error}")
-        logger.exception("MongoDB save_trace error")
-        raise
+        console.print(f"[yellow]Trace persistence skipped:[/yellow] {error}")
+        return None
+
+
+def _handle_task_exception(task: asyncio.Task) -> None:
+    try:
+        task.result()
+    except Exception:
+        pass
 
 
 def save_trace_sync(trace_data: dict) -> None:
@@ -252,9 +258,13 @@ def save_trace_sync(trace_data: dict) -> None:
         loop = None
 
     if loop is not None and loop.is_running():
-        loop.create_task(save_trace(trace_data))
+        task = loop.create_task(save_trace(trace_data))
+        task.add_done_callback(_handle_task_exception)
     else:
-        asyncio.run(save_trace(trace_data))
+        try:
+            asyncio.run(save_trace(trace_data))
+        except Exception:
+            pass
 
 
 async def list_traces(filters: TraceFilters) -> TraceListResponse:

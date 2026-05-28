@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tracellm"
-version = "0.1.0"
-description = "TraceLLM SDK and CLI for tracing LLM applications."
+version = "0.2.0"
+description = "TraceLLM — Open-source LLM observability, tracing, and replay infrastructure."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -15,10 +15,22 @@ dependencies = [
     "motor",
     "pymongo",
     "python-dotenv",
+    "openai",
+    "langchain-core",
+    "httpx",
 ]
 
 [project.scripts]
 tracellm = "tracellm.cli:main"
 
 [tool.setuptools]
-packages = ["tracellm", "sdk", "app", "app.database", "app.models", "app.routes", "app.websocket"]
+packages = [
+    "tracellm",
+    "tracellm.integrations",
+    "sdk",
+    "app",
+    "app.database",
+    "app.models",
+    "app.routes",
+    "app.websocket",
+]

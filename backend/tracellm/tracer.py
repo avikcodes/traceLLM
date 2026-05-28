@@ -1,4 +1,7 @@
+import asyncio
+import contextvars
 import functools
+import inspect
 import time
 import uuid
 from datetime import datetime, timezone
@@ -22,6 +25,10 @@ from tracellm.utils import (
     trace_command_footer,
 )
 
+_current_trace_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "_current_trace_context", default=None
+)
+
 
 def build_trace_payload(
     prompt: str,
@@ -40,6 +47,12 @@ def build_trace_payload(
     retry_count = coerce_retry_count(result)
     status = coerce_status(result, retry_count)
     failure_reason = coerce_failure_reason(result)
+
+    ctx = _current_trace_context.get()
+    if ctx and not steps:
+        steps = ctx.get("collected_steps", [])
+    if ctx and not retry_count:
+        retry_count = ctx.get("retry_count", 0)
 
     if trace_error is not None:
         status = "failed"
@@ -88,16 +101,8 @@ def finalize_trace(
     render: bool = True,
 ) -> dict[str, Any]:
     trace_data = build_trace_payload(
-        prompt,
-        model_name,
-        project_id,
-        project_name,
-        api_key,
-        environment,
-        result,
-        trace_error,
-        started_at,
-        latency,
+        prompt, model_name, project_id, project_name, api_key, environment,
+        result, trace_error, started_at, latency,
     )
     persist_trace(trace_data)
     if render:
@@ -132,42 +137,101 @@ def trace(
     environment: str = "development",
 ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            started_at = datetime.now(timezone.utc)
-            start = time.perf_counter()
-            result: Any = None
-            trace_error: Exception | None = None
-            effective_prompt = prompt or func.__name__
-            project_id, project_name, effective_environment, resolved_key = _resolve_project_context(
-                api_key=api_key,
-                project=project,
-                environment=environment,
-            )
+        is_async = inspect.iscoroutinefunction(func)
 
-            try:
-                result = func(*args, **kwargs)
-                return result
-            except Exception as error:
-                trace_error = error
-                raise
-            finally:
-                latency = round((time.perf_counter() - start) * 1000, 2)
-                finalize_trace(
-                    prompt=effective_prompt,
-                    model_name=model_name,
-                    project_id=project_id,
-                    project_name=project_name,
-                    api_key=resolved_key,
-                    environment=effective_environment,
-                    result=result,
-                    trace_error=trace_error,
-                    started_at=started_at,
-                    latency=latency,
-                    render=True,
+        if is_async:
+
+            @functools.wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                started_at = datetime.now(timezone.utc)
+                start = time.perf_counter()
+                result: Any = None
+                trace_error: Exception | None = None
+                effective_prompt = prompt or func.__name__
+                project_id, project_name, effective_environment, resolved_key = _resolve_project_context(
+                    api_key=api_key, project=project, environment=environment,
                 )
 
-        return wrapper
+                ctx_token = _current_trace_context.set({
+                    "project_id": project_id,
+                    "project_name": project_name,
+                    "environment": effective_environment,
+                    "api_key": resolved_key,
+                    "collected_steps": [],
+                    "retry_count": 0,
+                })
+
+                try:
+                    result = await func(*args, **kwargs)
+                    return result
+                except Exception as error:
+                    trace_error = error
+                    raise
+                finally:
+                    latency = round((time.perf_counter() - start) * 1000, 2)
+                    finalize_trace(
+                        prompt=effective_prompt,
+                        model_name=model_name,
+                        project_id=project_id,
+                        project_name=project_name,
+                        api_key=resolved_key,
+                        environment=effective_environment,
+                        result=result,
+                        trace_error=trace_error,
+                        started_at=started_at,
+                        latency=latency,
+                        render=True,
+                    )
+                    _current_trace_context.reset(ctx_token)
+
+            return async_wrapper
+
+        else:
+
+            @functools.wraps(func)
+            def wrapper(*args: Any, **kwargs: Any) -> Any:
+                started_at = datetime.now(timezone.utc)
+                start = time.perf_counter()
+                result: Any = None
+                trace_error: Exception | None = None
+                effective_prompt = prompt or func.__name__
+                project_id, project_name, effective_environment, resolved_key = _resolve_project_context(
+                    api_key=api_key, project=project, environment=environment,
+                )
+
+                ctx_token = _current_trace_context.set({
+                    "project_id": project_id,
+                    "project_name": project_name,
+                    "environment": effective_environment,
+                    "api_key": resolved_key,
+                    "collected_steps": [],
+                    "retry_count": 0,
+                })
+
+                try:
+                    result = func(*args, **kwargs)
+                    return result
+                except Exception as error:
+                    trace_error = error
+                    raise
+                finally:
+                    latency = round((time.perf_counter() - start) * 1000, 2)
+                    finalize_trace(
+                        prompt=effective_prompt,
+                        model_name=model_name,
+                        project_id=project_id,
+                        project_name=project_name,
+                        api_key=resolved_key,
+                        environment=effective_environment,
+                        result=result,
+                        trace_error=trace_error,
+                        started_at=started_at,
+                        latency=latency,
+                        render=True,
+                    )
+                    _current_trace_context.reset(ctx_token)
+
+            return wrapper
 
     return decorator
 

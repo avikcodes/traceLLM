@@ -2,209 +2,108 @@ import os
 import subprocess
 import sys
 import time
-import webbrowser
 from pathlib import Path
-from typing import Any
-from urllib.error import URLError
-from urllib.request import Request, urlopen
 
+import httpx
+from dotenv import load_dotenv
 from rich.panel import Panel
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from tracellm.utils import console
 
-BACKEND_PORT = 8000
-DASHBOARD_PORT = 3000
-HEALTH_TIMEOUT = 15.0
-DB_TIMEOUT_MS = 5000
+load_dotenv()
 
 
-def _find_backend_dir() -> Path:
-    return Path(__file__).resolve().parent.parent
-
-
-def _load_env() -> None:
+def _check_mongodb() -> bool:
     try:
-        from dotenv import load_dotenv
-
-        backend_dir = _find_backend_dir()
-        env_path = backend_dir / ".env"
-        if env_path.exists():
-            load_dotenv(dotenv_path=env_path)
-        else:
-            load_dotenv()
-    except ImportError:
-        pass
-
-
-def _check_mongodb() -> tuple[bool, str]:
-    mongo_url = os.getenv("MONGO_URL")
-    if not mongo_url:
-        return False, "MONGO_URL not set"
-
-    try:
-        from pymongo import MongoClient
-
-        client = MongoClient(mongo_url, serverSelectionTimeoutMS=DB_TIMEOUT_MS)
+        import pymongo
+        mongo_url = os.getenv("MONGO_URL")
+        if not mongo_url:
+            console.print("[yellow]MONGO_URL not set — traces won't be persisted[/yellow]")
+            return False
+        client = pymongo.MongoClient(mongo_url, serverSelectionTimeoutMS=3000)
         client.admin.command("ping")
         client.close()
-        return True, "MongoDB connected"
-    except Exception as exc:
-        reason = str(exc).split(".")[0] if "." in str(exc) else str(exc)
-        return False, f"MongoDB unreachable: {reason}"
+        return True
+    except Exception:
+        console.print("[yellow]MongoDB not reachable — traces won't be persisted[/yellow]")
+        return False
 
 
-def _start_backend(port: int) -> subprocess.Popen | None:
-    backend_dir = _find_backend_dir()
+def _start_fastapi(port: int) -> subprocess.Popen:
+    backend_dir = Path(__file__).resolve().parent.parent
     env = os.environ.copy()
+    env["PYTHONPATH"] = str(backend_dir)
 
-    pythonpath = env.get("PYTHONPATH", "")
-    sep = ";" if sys.platform == "win32" else ":"
-    env["PYTHONPATH"] = f"{backend_dir}{sep}{pythonpath}" if pythonpath else str(backend_dir)
-
-    try:
-        proc = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "main:app", "--reload", "--port", str(port)],
-            cwd=backend_dir,
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        return proc
-    except FileNotFoundError:
-        return None
+    process = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", str(port), "--reload"],
+        cwd=backend_dir,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    return process
 
 
-def _check_health(port: int, timeout: float) -> bool:
-    url = f"http://127.0.0.1:{port}/"
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        try:
-            with urlopen(Request(url), timeout=2) as resp:
-                if resp.status == 200:
+def _health_check(port: int, timeout: int = 15) -> bool:
+    start = time.time()
+    with console.status("[bold white]Waiting for API server...[/bold white]"):
+        while time.time() - start < timeout:
+            try:
+                response = httpx.get(f"http://127.0.0.1:{port}/", timeout=3)
+                if response.status_code == 200:
                     return True
-        except (URLError, ConnectionResetError, TimeoutError, OSError):
-            pass
-        time.sleep(0.3)
+            except (httpx.ConnectError, httpx.TimeoutException):
+                pass
+            time.sleep(0.5)
     return False
 
 
-def _render_startup_screen(
-    mongo_ok: bool,
-    health_ok: bool,
-    port: int,
-    dashboard_port: int,
-    launch_dashboard: bool,
-) -> None:
-    console.print()
+def _render_status(mongodb_ok: bool, api_ok: bool, port: int, dashboard_port: int, launch_dashboard: bool) -> None:
+    table = Table.grid(padding=(0, 2))
+    table.add_column()
+    table.add_column()
 
-    grid = Table.grid(padding=(0, 2))
-    grid.add_column(no_wrap=True)
-    grid.add_column()
-    grid.add_row("[bold white]TraceLLM[/bold white]", "[bright_black]local observability infrastructure[/bright_black]")
-    grid.add_row("", "")
-    grid.add_row(
-        "[green]●[/green]" if mongo_ok else "[red]●[/red]",
-        f"[{'green' if mongo_ok else 'red'}]{'MongoDB connected' if mongo_ok else 'MongoDB connection failed'}[/]",
+    table.add_row(
+        "API Server",
+        f"[green]●[/green] http://127.0.0.1:{port}" if api_ok else "[red]●[/red] Failed",
     )
-    grid.add_row(
-        "[green]●[/green]" if health_ok else "[red]●[/red]",
-        f"[{'green' if health_ok else 'red'}]{'API server running' if health_ok else 'API server failed to start'}[/]",
+    table.add_row(
+        "MongoDB",
+        "[green]● Connected[/green]" if mongodb_ok else "[yellow]● Skipped[/yellow]",
     )
-    if health_ok:
-        grid.add_row("[green]●[/green]", "[green]WebSocket ready[/green]")
+    table.add_row(
+        "Dashboard",
+        f"[green]● http://localhost:{dashboard_port}[/green]" if launch_dashboard else "[dim]● Not launched[/dim]",
+    )
+    table.add_row(
+        "WebSocket",
+        f"[dim]ws://127.0.0.1:{port}/ws[/dim]",
+    )
 
-    body = grid
-    subtitle = f"[dim]http://127.0.0.1:{port}[/dim]"
-
-    console.print(Panel(body, title="Startup", subtitle=subtitle, border_style="bright_black", padding=(1, 2)))
-
-    if health_ok:
-        info = Table.grid(padding=(0, 3))
-        info.add_column(style="bright_black", no_wrap=True)
-        info.add_column(style="white")
-        info.add_row("API", f"http://127.0.0.1:{port}")
-        info.add_row("Dashboard", f"http://localhost:{dashboard_port}")
-        info.add_row("WebSocket", f"ws://127.0.0.1:{port}/ws")
-        console.print()
-        console.print(Panel(info, border_style="bright_black", padding=(1, 2)))
-        if launch_dashboard:
-            webbrowser.open(f"http://localhost:{dashboard_port}")
-        console.print()
-        console.print("[dim]Press Ctrl+C to stop[/dim]")
-        console.print()
-
-
-def _render_mongo_error(reason: str) -> None:
     console.print()
     console.print(
-        Panel.fit(
-            f"[yellow]{reason}[/yellow]\n\n"
-            f"[bright_black]Check that:[/bright_black]\n"
-            f"  [bright_black]1.[/bright_black] [bold]MONGO_URL[/bold] is set in [dim].env[/dim]\n"
-            f"  [bright_black]2.[/bright_black] MongoDB is running and accessible\n"
-            f"  [bright_black]3.[/bright_black] Network/firewall allows the connection\n\n"
-            f"[bright_black]Tip:[/bright_black] [dim]create a [bold].env[/bold] file in the backend directory[/dim]",
-            title="Startup Error",
-            border_style="red",
-            padding=(1, 2),
-        )
+        Panel.fit(table, title="TraceLLM Stack", border_style="bright_black", padding=(1, 3))
     )
     console.print()
 
 
-def _render_start_error(port: int) -> None:
-    console.print()
-    console.print(
-        Panel.fit(
-            "[yellow]The API server did not start within the timeout.[/yellow]\n\n"
-            f"[bright_black]Check that:[/bright_black]\n"
-            f"  [bright_black]1.[/bright_black] Port [bold]{port}[/bold] is not in use\n"
-            f"  [bright_black]2.[/bright_black] All dependencies are installed\n"
-            f"  [bright_black]3.[/bright_black] [bold].env[/bold] is configured\n\n"
-            f"[bright_black]Try running manually:[/bright_black]\n"
-            f"  [dim]cd backend && uvicorn main:app --reload --port {port}[/dim]",
-            title="Startup Error",
-            border_style="red",
-            padding=(1, 2),
-        )
-    )
-    console.print()
+def run_start(port: int = 8000, dashboard_port: int = 3000, launch_dashboard: bool = False) -> None:
+    mongodb_ok = _check_mongodb()
+    api_process = _start_fastapi(port)
+    api_ok = _health_check(port)
 
+    if launch_dashboard and api_ok:
+        import webbrowser
+        webbrowser.open(f"http://localhost:{dashboard_port}")
 
-def run_start(port: int = BACKEND_PORT, dashboard_port: int = DASHBOARD_PORT, launch_dashboard: bool = False) -> None:
-    _load_env()
-
-    mongo_ok, mongo_msg = _check_mongodb()
-    if not mongo_ok:
-        _render_mongo_error(mongo_msg)
-        raise SystemExit(1)
-
-    proc = _start_backend(port=port)
-    if proc is None:
-        console.print("[red]uvicorn not found. Install it with: pip install uvicorn[/red]")
-        raise SystemExit(1)
-
-    health_ok = _check_health(port=port, timeout=HEALTH_TIMEOUT)
-
-    _render_startup_screen(
-        mongo_ok=mongo_ok,
-        health_ok=health_ok,
-        port=port,
-        dashboard_port=dashboard_port,
-        launch_dashboard=launch_dashboard,
-    )
-
-    if not health_ok:
-        _render_start_error(port)
-        proc.terminate()
-        raise SystemExit(1)
+    _render_status(mongodb_ok, api_ok, port, dashboard_port, launch_dashboard)
 
     try:
-        proc.wait()
+        api_process.wait()
     except KeyboardInterrupt:
-        console.print()
-        console.print("[yellow]Shutting down...[/yellow]")
-        proc.terminate()
-        console.print("[green]●[/green] TraceLLM stopped")
-        console.print()
+        console.print("\n[yellow]Shutting down...[/yellow]")
+        api_process.terminate()
+        api_process.wait()
+        console.print("[green]Stopped.[/green]")
