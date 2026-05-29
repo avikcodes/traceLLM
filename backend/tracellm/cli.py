@@ -1,23 +1,22 @@
-import asyncio
-import json
-import time
-from datetime import datetime, timezone
-from typing import Any
+import os
 
 import typer
-from rich.live import Live
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
-from tracellm.db import create_project_with_key, fetch_recent_traces
+from tracellm.db import create_project_with_key
 from tracellm.exporter import export_traces
 from tracellm.replay import replay_trace
 from tracellm.startup import run_start
 from tracellm.tracer import llm_response, run_live_trace
-from tracellm.utils import console, render_project_credentials, status_style, latency_style
+from tracellm.utils import console, render_project_credentials
 
 app = typer.Typer(help="TraceLLM SDK and developer CLI.")
+
+
+@app.callback(invoke_without_command=True)
+def cli_entry(ctx: typer.Context) -> None:
+    if ctx.invoked_subcommand is None:
+        from tracellm.palette import run_palette
+        run_palette(app)
 
 
 @app.command()
@@ -75,67 +74,15 @@ def replay(
 def monitor(
     refresh: float = typer.Option(2.0, "--refresh", "-r", help="Polling interval in seconds."),
     limit: int = typer.Option(10, "--limit", "-l", help="Number of recent traces to show."),
+    ws_host: str = typer.Option(os.environ.get("TRACELLM_WS_HOST", "127.0.0.1"), "--ws-host", help="Backend WebSocket host. Falls back to TRACELLM_WS_HOST env."),
+    ws_port: int = typer.Option(int(os.environ.get("TRACELLM_WS_PORT", "8000")), "--ws-port", help="Backend WebSocket port. Falls back to TRACELLM_WS_PORT env."),
 ) -> None:
     """Watch incoming real traces in realtime."""
+    from tracellm.monitor import run_monitor as _run_monitor
     try:
-        _run_monitor(refresh, limit)
+        _run_monitor(refresh=refresh, limit=limit, ws_host=ws_host, ws_port=ws_port)
     except KeyboardInterrupt:
         console.print("\n[yellow]Monitor stopped.[/yellow]")
-
-
-def _run_monitor(refresh: float, limit: int) -> None:
-    seen: set[str] = set()
-
-    with Live(console=console, refresh_per_second=4, screen=True) as live:
-        while True:
-            try:
-                traces = fetch_recent_traces(limit=limit)
-                new_count = sum(1 for t in traces if t.trace_id not in seen)
-                for t in traces:
-                    seen.add(t.trace_id)
-
-                table = Table(title=f"Live Traces  •  {len(seen)} total  •  {new_count} new", box=None, padding=(0, 1))
-                table.add_column("Time", style="bright_black", width=8)
-                table.add_column("Status", width=8, justify="center")
-                table.add_column("Model", style="white", no_wrap=True)
-                table.add_column("Latency", justify="right", width=10)
-                table.add_column("Tokens", justify="right", width=8)
-                table.add_column("Retries", justify="right", width=7)
-                table.add_column("Prompt", style="dim", width=40)
-                table.add_column("Steps", justify="right", width=5)
-
-                for t in traces[:limit]:
-                    ts = t.created_at.strftime("%H:%M:%S") if hasattr(t.created_at, "strftime") else str(t.created_at)[11:19]
-                    lat = float(t.latency)
-                    table.add_row(
-                        ts,
-                        f"[{status_style(t.status)}]{t.status.upper()}[/]",
-                        str(t.model_name or "?")[:16],
-                        f"[{latency_style(lat)}]{lat:.0f}ms[/]",
-                        f"{t.token_count}",
-                        f"{t.retry_count}",
-                        str(t.prompt)[:40],
-                        str(len(t.steps)),
-                    )
-
-                if new_count > 0:
-                    title = Text(f" NEW: {new_count} trace(s) ", style="bold white on green")
-                else:
-                    title = Text(" No new traces ", style="dim")
-
-                live.update(
-                    Panel(
-                        table,
-                        title="TraceLLM Monitor",
-                        subtitle=f"polling every {refresh}s — Ctrl+C to stop {str(title)}",
-                        border_style="bright_black",
-                        padding=(1, 2),
-                    )
-                )
-                time.sleep(refresh)
-            except Exception as e:
-                live.update(Panel(f"[yellow]Connection issue: {e}[/yellow]", title="Monitor"))
-                time.sleep(refresh)
 
 
 @app.command()

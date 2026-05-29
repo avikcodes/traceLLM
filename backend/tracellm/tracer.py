@@ -7,9 +7,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from rich.live import Live
-
 from tracellm.db import resolve_api_key, save_trace_payload
+from tracellm.mascot import MascotState, header, message
+from tracellm.summary import print_summary
+from tracellm.trace_stream import TraceStream
 from tracellm.utils import (
     SLOW_TRACE_THRESHOLD_MS,
     coerce_failure_reason,
@@ -21,8 +22,6 @@ from tracellm.utils import (
     estimate_tokens,
     render_trace_report,
     simulate_step,
-    status_style,
-    trace_command_footer,
 )
 
 _current_trace_context: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
@@ -535,23 +534,24 @@ def run_live_trace(
         environment=environment,
     )
 
-    from tracellm.utils import build_live_trace_screen
+    console.print()
+    console.print(header("Tracing request...", MascotState.LOADING))
+    console.print()
 
-    step_labels = [
-        "Embedding prompt",
-        "Searching vector index",
-        "Reranking context",
-        "Planning tool execution",
-        "Allocating context window",
-        "Running tool chain",
-        "Generating answer",
+    _STEP_EVENTS: list[tuple[str, str]] = [
+        ("query.embed", "Embedding prompt"),
+        ("vector.search", "Searching vector index"),
+        ("context.rerank", "Reranking context"),
+        ("agent.plan", "Planning tool execution"),
+        ("context.allocate", "Allocating context window"),
+        ("tool.chain", "Running tool chain"),
+        ("llm.generate", "Generating answer"),
     ]
 
-    with Live(console=console, refresh_per_second=8, transient=True) as live:
+    with TraceStream(prompt, model_name) as stream:
         finished_steps: list[dict[str, Any]] = []
-        for label in step_labels:
-            live.update(build_live_trace_screen(prompt, model_name, finished_steps, label))
-            time.sleep(0.12)
+        for event_name, label in _STEP_EVENTS:
+            stream.emit(event_name, label)
             if label == "Generating answer":
                 try:
                     result = simulate_llm_response(prompt)
@@ -559,8 +559,10 @@ def run_live_trace(
                 except Exception as error:
                     trace_error = error
                     raise
-            else:
-                live.update(build_live_trace_screen(prompt, model_name, finished_steps, label))
+
+    # If simulation didn't generate steps, emit step events from simulation
+    if not finished_steps and result:
+        finished_steps = coerce_steps(result)
 
     latency = round((time.perf_counter() - start) * 1000, 2)
     trace_data = finalize_trace(
@@ -574,9 +576,15 @@ def run_live_trace(
         trace_error=trace_error,
         started_at=started_at,
         latency=latency,
-        render=render,
+        render=False,
     )
-    trace_command_footer(trace_data)
+    print_summary(trace_data)
+    status = str(trace_data.get("status", "success")).lower()
+    if status == "success":
+        console.print(message("Trace complete", MascotState.SUCCESS))
+    elif status in ("warning", "failed"):
+        console.print(message("Warning: tool execution failed", MascotState.WARNING))
+    console.print()
     return trace_data
 
 

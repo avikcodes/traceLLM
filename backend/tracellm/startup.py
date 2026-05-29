@@ -10,6 +10,8 @@ from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
+from tracellm.banner import render_banner
+from tracellm.mascot import MascotState, message
 from tracellm.utils import console
 
 load_dotenv()
@@ -90,9 +92,19 @@ def _render_status(mongodb_ok: bool, api_ok: bool, port: int, dashboard_port: in
 
 
 def run_start(port: int = 8000, dashboard_port: int = 3000, launch_dashboard: bool = False) -> None:
+    console.print()
+    console.print(render_banner())
+    console.print()
+    console.print(message("TraceLLM starting...", MascotState.LOADING))
+    console.print()
+
     mongodb_ok = _check_mongodb()
+    console.print(f"  [green]✓[/green] MongoDB connected" if mongodb_ok else f"  [red]✗[/red] MongoDB unavailable")
+
     api_process = _start_fastapi(port)
     api_ok = _health_check(port)
+    console.print(f"  [green]✓[/green] API ready" if api_ok else f"  [red]✗[/red] API failed")
+    console.print(f"  [green]✓[/green] WebSocket ready" if api_ok else f"  [red]✗[/red] WebSocket unavailable")
 
     if launch_dashboard and api_ok:
         import webbrowser

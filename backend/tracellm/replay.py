@@ -6,9 +6,10 @@ from rich.panel import Panel
 from rich.rule import Rule
 
 from tracellm.db import fetch_trace
+from tracellm.mascot import MascotState, header, message
+from tracellm.tree_renderer import render_execution_panel
 from tracellm.utils import (
     console,
-    render_replay_tree,
     render_trace_report,
     status_style,
 )
@@ -48,6 +49,8 @@ def replay_trace(trace_id: str, speed: float = 1.0, show_response: bool = False)
         return
 
     console.print()
+    console.print(header("Replaying execution timeline...", MascotState.LOADING))
+    console.print()
     meta_lines = [
         f"[bright_black]trace_id[/bright_black] {trace_data['trace_id']}",
         f"[bright_black]status[/bright_black]   [{status_style(str(trace_data['status']))}]{str(trace_data['status']).upper()}[/]",
@@ -59,13 +62,19 @@ def replay_trace(trace_id: str, speed: float = 1.0, show_response: bool = False)
 
     with Live(console=console, refresh_per_second=12, transient=False) as live:
         for index, step in enumerate(steps, start=1):
-            tree = render_replay_tree(steps, active_index=index)
+            tree_panel = render_execution_panel(steps, active_index=index)
             detail = _replay_detail_panel(trace_data, step, index, len(steps))
-            body = f"{tree}\n\n{detail}"
+            body = f"{tree_panel}\n\n{detail}"
             live.update(Panel(body, title=f"Replaying step {index}/{len(steps)}", border_style="bright_black", padding=(1, 2)))
             delay = float(step.get("duration", 0.0)) / 1000 / max(speed, 0.1)
             time.sleep(max(0.08, min(0.55, delay)))
 
+    status = str(trace_data.get("status", "success")).lower()
+    if status == "success":
+        console.print(message("Replay complete", MascotState.SUCCESS))
+    elif status in ("warning", "failed"):
+        console.print(message("Warning: trace had issues", MascotState.WARNING))
+    console.print()
     render_trace_report(trace_data)
     if show_response:
         console.print(Panel(str(trace_data.get("response") or ""), title="Full Response", border_style="bright_black", padding=(1, 2)))
