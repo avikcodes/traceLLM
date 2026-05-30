@@ -6,7 +6,7 @@ const GITHUB_API = "https://api.github.com";
 
 export async function GET() {
   try {
-    const [repoRes, contributorsRes] = await Promise.all([
+    const [repoRes, contributorsRes, releaseRes] = await Promise.all([
       fetch(`${GITHUB_API}/repos/${REPO_OWNER}/${REPO_NAME}`, {
         headers: {
           Accept: "application/vnd.github.v3+json",
@@ -24,6 +24,13 @@ export async function GET() {
           next: { revalidate: 300 },
         }
       ),
+      fetch(`${GITHUB_API}/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`, {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "tracellm-website",
+        },
+        next: { revalidate: 300 },
+      }),
     ]);
 
     if (!repoRes.ok) {
@@ -35,6 +42,7 @@ export async function GET() {
 
     const repo = await repoRes.json();
     const contributors = contributorsRes.ok ? await contributorsRes.json() : [];
+    const release = releaseRes.ok ? await releaseRes.json() : null;
 
     return NextResponse.json({
       stars: repo.stargazers_count ?? 0,
@@ -42,6 +50,7 @@ export async function GET() {
       watchers: repo.subscribers_count ?? 0,
       openIssues: repo.open_issues_count ?? 0,
       description: repo.description ?? "",
+      latestRelease: release?.tag_name ?? null,
       contributors: contributors.map((c: { login: string; avatar_url: string; contributions: number }) => ({
         login: c.login,
         avatarUrl: c.avatar_url,

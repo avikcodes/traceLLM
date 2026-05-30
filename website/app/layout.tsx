@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TraceLLM | AI Observability Platform",
+  title: "TraceLLM | Terminal-first LLM Observability",
   description:
-    "TraceLLM helps teams trace prompts, latency, token usage, retries, tool calls, and execution paths in realtime.",
+    "Open-source, terminal-first observability for LLMs and AI agents. Trace prompts, tool calls, retries, latency, tokens, and execution flows.",
 };
 
 export default function RootLayout({

@@ -10,6 +10,7 @@ interface GitHubData {
   watchers: number;
   openIssues: number;
   description: string;
+  latestRelease: string | null;
   contributors: { login: string; avatarUrl: string; contributions: number }[];
   totalContributors: number;
 }
@@ -63,7 +64,7 @@ export function GitHubStats() {
 
   if (loading) {
     return (
-      <div className="min-w-[260px] rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+      <div className="min-w-[260px] rounded-xl border border-white/[0.08] bg-[#09090d] p-5">
         <div className="animate-pulse space-y-4">
           <div className="h-3 w-24 rounded bg-white/[0.08]" />
           <div className="h-8 w-20 rounded bg-white/[0.08]" />
@@ -80,7 +81,7 @@ export function GitHubStats() {
 
   if (error || !data) {
     return (
-      <div className="min-w-[260px] rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+      <div className="min-w-[260px] rounded-xl border border-white/[0.08] bg-[#09090d] p-5">
         <div className="flex items-center justify-between">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#6B6B6B]">
@@ -114,7 +115,7 @@ export function GitHubStats() {
   }
 
   return (
-    <div className="min-w-[260px] rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+      <div className="min-w-[260px] rounded-xl border border-white/[0.08] bg-[#09090d] p-5">
       <div className="flex items-center justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#6B6B6B]">
@@ -128,7 +129,7 @@ export function GitHubStats() {
           href={REPO_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/[0.12] bg-white px-4 text-sm font-medium text-white transition-colors hover:bg-white/[0.25]"
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/[0.12] bg-white px-4 text-sm font-medium text-black transition-colors hover:bg-zinc-200"
         >
           <GithubMark className="size-4" />
           Star
@@ -162,6 +163,15 @@ export function GitHubStats() {
         </div>
       </div>
 
+      <div className="mt-3 rounded-lg border border-white/[0.06] bg-[#050506] px-3 py-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[#6B6B6B]">
+          Latest release
+        </p>
+        <p className="mt-1 text-sm font-medium text-[#9A9A9A]">
+          {data.latestRelease ?? "No GitHub release yet"}
+        </p>
+      </div>
+
       <div className="mt-4 flex items-center justify-between gap-4">
         <div className="flex -space-x-2.5">
           {data.contributors.slice(0, 5).map((contributor) => (
@@ -175,7 +185,7 @@ export function GitHubStats() {
           ))}
         </div>
         <p className="text-sm text-[#6B6B6B]">
-          {data.totalContributors}+ contributors
+          {data.totalContributors} contributor{data.totalContributors === 1 ? "" : "s"}
         </p>
       </div>
     </div>
