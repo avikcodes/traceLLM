@@ -10,19 +10,12 @@ import {
   FileText,
   Menu,
   Search,
-  Terminal,
   X,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { docsPages, docsSections, getDocsPageIndex, type DocsPage } from "@/components/docs/docs-data";
-
-const tocItems = [
-  { title: "Overview", href: "#overview" },
-  { title: "Prerequisites", href: "#prerequisites" },
-  { title: "Placeholder", href: "#placeholder" },
-  { title: "Next Steps", href: "#next-steps" },
-];
+import { getDocContent } from "@/components/docs/docs-content";
 
 function TraceLogo({ className }: { className?: string }) {
   return (
@@ -129,6 +122,8 @@ function DocsNav({
 }
 
 function DocsArticle({ page }: { page: DocsPage }) {
+  const content = getDocContent(page.slug);
+
   return (
     <article className="mx-auto w-full max-w-3xl px-6 py-12 lg:px-10 lg:py-16">
       <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 font-mono text-xs text-violet-200">
@@ -140,41 +135,29 @@ function DocsArticle({ page }: { page: DocsPage }) {
       </h1>
       <p className="mt-5 text-lg leading-8 text-zinc-400">{page.description}</p>
 
-      <section id="overview" className="mt-12 scroll-mt-24">
-        <h2 className="text-2xl font-semibold tracking-tight text-white">Overview</h2>
-        <p className="mt-4 leading-7 text-zinc-400">
-          Placeholder content for this documentation page. The navigation, layout, and page structure
-          are ready for full documentation content.
-        </p>
-      </section>
-
-      <section id="prerequisites" className="mt-10 scroll-mt-24">
-        <h2 className="text-2xl font-semibold tracking-tight text-white">Prerequisites</h2>
-        <div className="mt-4 rounded-2xl border border-white/10 bg-[#09090d] p-5">
-          <p className="leading-7 text-zinc-400">
-            Placeholder prerequisites and setup notes will be added here.
-          </p>
-        </div>
-      </section>
-
-      <section id="placeholder" className="mt-10 scroll-mt-24">
-        <h2 className="text-2xl font-semibold tracking-tight text-white">Placeholder</h2>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black">
-          <div className="border-b border-white/10 px-4 py-3 font-mono text-xs text-zinc-500">
-            terminal
-          </div>
-          <pre className="overflow-x-auto p-4 font-mono text-sm leading-7 text-zinc-300">{`pip install tracellm
-tracellm start
-tracellm trace "Explain transformers"`}</pre>
-        </div>
-      </section>
-
-      <section id="next-steps" className="mt-10 scroll-mt-24">
-        <h2 className="text-2xl font-semibold tracking-tight text-white">Next Steps</h2>
-        <p className="mt-4 leading-7 text-zinc-400">
-          Placeholder links and deeper references will be added when the page content is written.
-        </p>
-      </section>
+      {content.length > 0 ? (
+        content.map((section) => (
+          <section key={section.id} id={section.id} className="mt-10 scroll-mt-24">
+            <h2 className="text-2xl font-semibold tracking-tight text-white">{section.title}</h2>
+            {section.content}
+          </section>
+        ))
+      ) : (
+        <>
+          <section id="overview" className="mt-12 scroll-mt-24">
+            <h2 className="text-2xl font-semibold tracking-tight text-white">Overview</h2>
+            <p className="mt-4 leading-7 text-zinc-400">
+              {page.description}
+            </p>
+          </section>
+          <section id="next-steps" className="mt-10 scroll-mt-24">
+            <h2 className="text-2xl font-semibold tracking-tight text-white">Next Steps</h2>
+            <p className="mt-4 leading-7 text-zinc-400">
+              Content for this page is being written.
+            </p>
+          </section>
+        </>
+      )}
     </article>
   );
 }
@@ -218,7 +201,8 @@ function PageNavigation({ page }: { page: DocsPage }) {
   );
 }
 
-function OnThisPage() {
+function OnThisPage({ tocItems }: { tocItems: { title: string; href: string }[] }) {
+  if (tocItems.length === 0) return null;
   return (
     <aside className="sticky top-20 hidden h-[calc(100vh-5rem)] w-64 shrink-0 border-l border-white/10 px-6 py-10 xl:block">
       <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
@@ -249,6 +233,10 @@ export function DocsLayout({ page }: { page: DocsPage }) {
       `${item.title} ${item.description}`.toLowerCase().includes(normalizedQuery)
     ).length;
   }, [query]);
+  const tocItems = useMemo(
+    () => getDocContent(page.slug).map((s) => ({ title: s.title, href: `#${s.id}` })),
+    [page.slug],
+  );
 
   return (
     <main className="min-h-screen bg-[#050506] text-white">
@@ -298,7 +286,7 @@ export function DocsLayout({ page }: { page: DocsPage }) {
           <PageNavigation page={page} />
         </div>
 
-        <OnThisPage />
+        <OnThisPage tocItems={tocItems} />
       </div>
 
       {mobileOpen && (

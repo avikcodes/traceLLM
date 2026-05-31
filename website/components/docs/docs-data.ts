@@ -191,7 +191,7 @@ export const docsSections = [
       {
         title: "API Reference",
         slug: "developers/api-reference",
-        description: "Placeholder reference for TraceLLM API endpoints.",
+        description: "REST API endpoints for traces, analytics, projects, and health.",
       },
     ],
   },
@@ -201,22 +201,22 @@ export const docsSections = [
       {
         title: "OpenAI Example",
         slug: "examples/openai-example",
-        description: "Placeholder OpenAI tracing example.",
+        description: "Trace real OpenAI chat completion calls.",
       },
       {
         title: "Groq Example",
         slug: "examples/groq-example",
-        description: "Placeholder Groq tracing example.",
+        description: "Trace Groq API calls via OpenAI-compatible client.",
       },
       {
         title: "Agent Example",
         slug: "examples/agent-example",
-        description: "Placeholder agent tracing example.",
+        description: "Trace a multi-tool agent with retries.",
       },
       {
         title: "RAG Example",
         slug: "examples/rag-example",
-        description: "Placeholder RAG tracing example.",
+        description: "Trace a retrieval-augmented generation pipeline.",
       },
     ],
   },
@@ -226,12 +226,12 @@ export const docsSections = [
       {
         title: "FAQ",
         slug: "resources/faq",
-        description: "Frequently asked questions placeholder.",
+        description: "Answers to common questions about TraceLLM.",
       },
       {
         title: "Troubleshooting",
         slug: "resources/troubleshooting",
-        description: "Common issues and debugging paths placeholder.",
+        description: "Common issues and debugging paths for TraceLLM.",
       },
     ],
   },

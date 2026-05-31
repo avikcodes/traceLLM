@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const repoUrl = "https://github.com/avikcodes/traceLLM";
@@ -120,11 +121,11 @@ const cliCommands = [
 ];
 
 const docs = [
-  { title: "Quick Start", description: "Install TraceLLM and capture your first trace.", icon: Zap },
-  { title: "CLI Commands", description: "Reference for start, trace, replay, monitor, and export.", icon: Terminal },
-  { title: "Replay Engine", description: "Understand replay checkpoints and execution trees.", icon: RefreshCcw },
-  { title: "Architecture", description: "Collector, trace store, dashboard, and export model.", icon: Boxes },
-  { title: "Examples", description: "Common patterns for LLM apps and agent workflows.", icon: Code2 },
+  { title: "Quick Start", description: "Install TraceLLM and capture your first trace.", icon: Zap, href: "/docs/getting-started/quick-start" },
+  { title: "CLI Commands", description: "Reference for start, trace, replay, monitor, and export.", icon: Terminal, href: "/docs/cli/tracellm" },
+  { title: "Replay Engine", description: "Understand replay checkpoints and execution trees.", icon: RefreshCcw, href: "/docs/core/replay-engine" },
+  { title: "Architecture", description: "Collector, trace store, dashboard, and export model.", icon: Boxes, href: "/docs/developers/architecture" },
+  { title: "Examples", description: "Common patterns for LLM apps and agent workflows.", icon: Code2, href: "/docs/examples/openai-example" },
 ];
 
 const demoCards = [
@@ -557,7 +558,7 @@ export function LandingPage() {
             <a className="transition hover:text-white" href="#how-it-works">How it works</a>
             <a className="transition hover:text-white" href="#features">Features</a>
             <a className="transition hover:text-white" href="#cli">CLI</a>
-            <a className="transition hover:text-white" href="#docs">Docs</a>
+            <Link className="transition hover:text-white" href="/docs">Docs</Link>
           </div>
           <div className="flex items-center gap-2">
             <a
@@ -607,7 +608,7 @@ export function LandingPage() {
               GitHub
             </a>
             <a
-              href="#docs"
+              href="/docs"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/10 px-5 text-sm font-medium text-zinc-100 transition hover:border-violet-400/40 hover:bg-white/[0.04]"
             >
               <BookOpen className="size-4" />
@@ -887,9 +888,9 @@ export function LandingPage() {
             {docs.map((item) => {
               const Icon = item.icon;
               return (
-                <a
+                <Link
                   key={item.title}
-                  href="#"
+                  href={item.href}
                   className="group rounded-2xl border border-white/10 bg-[#09090d] p-5 transition hover:border-violet-400/40 hover:bg-violet-400/[0.06]"
                 >
                   <Icon className="size-5 text-violet-200" />
@@ -899,7 +900,7 @@ export function LandingPage() {
                     Read docs
                     <ArrowRight className="size-3.5" />
                   </div>
-                </a>
+                </Link>
               );
             })}
           </div>
