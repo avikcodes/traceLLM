@@ -12,10 +12,12 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 import { cn } from "@/lib/utils";
 import { docsPages, docsSections, getDocsPageIndex, type DocsPage } from "@/components/docs/docs-data";
 import { getDocContent } from "@/components/docs/docs-content";
+import { FloatingTracey } from "@/components/docs/floating-tracey";
 
 function TraceLogo({ className }: { className?: string }) {
   return (
@@ -55,12 +57,12 @@ function SearchBox({
 }) {
   return (
     <label className={cn("relative block", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search docs..."
-        className="h-10 w-full rounded-lg border border-white/10 bg-black pl-9 pr-3 font-mono text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-violet-300/40"
+        className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 font-mono text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-violet-300/40"
       />
     </label>
   );
@@ -90,7 +92,7 @@ function DocsNav({
 
         return (
           <div key={section.title}>
-            <div className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+            <div className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
               <ChevronDown className="size-3.5" />
               {section.title}
             </div>
@@ -105,8 +107,8 @@ function DocsNav({
                     className={cn(
                       "block rounded-lg px-3 py-2 text-sm leading-5 transition",
                       active
-                        ? "bg-white/[0.06] text-white"
-                        : "text-zinc-400 hover:bg-white/[0.035] hover:text-white"
+                        ? "bg-accent/10 text-foreground"
+                        : "text-muted-foreground hover:bg-accent/5 hover:text-foreground"
                     )}
                   >
                     {page.title}
@@ -125,34 +127,34 @@ function DocsArticle({ page }: { page: DocsPage }) {
   const content = getDocContent(page.slug);
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-6 py-12 lg:px-10 lg:py-16">
-      <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 font-mono text-xs text-violet-200">
+    <article className="docs-content mx-auto w-full max-w-3xl px-6 py-12 lg:px-10 lg:py-16">
+      <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 font-mono text-xs text-violet-700 dark:text-violet-200">
         <BookOpen className="size-3.5" />
         Documentation
       </div>
-      <h1 className="text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
+      <h1 className="text-4xl font-semibold tracking-[-0.05em] text-foreground sm:text-5xl">
         {page.title}
       </h1>
-      <p className="mt-5 text-lg leading-8 text-zinc-400">{page.description}</p>
+      <p className="mt-5 text-lg leading-8 text-muted-foreground">{page.description}</p>
 
       {content.length > 0 ? (
         content.map((section) => (
           <section key={section.id} id={section.id} className="mt-10 scroll-mt-24">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">{section.title}</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">{section.title}</h2>
             {section.content}
           </section>
         ))
       ) : (
         <>
           <section id="overview" className="mt-12 scroll-mt-24">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">Overview</h2>
-            <p className="mt-4 leading-7 text-zinc-400">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Overview</h2>
+            <p className="mt-4 leading-7 text-muted-foreground">
               {page.description}
             </p>
           </section>
           <section id="next-steps" className="mt-10 scroll-mt-24">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">Next Steps</h2>
-            <p className="mt-4 leading-7 text-zinc-400">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Next Steps</h2>
+            <p className="mt-4 leading-7 text-muted-foreground">
               Content for this page is being written.
             </p>
           </section>
@@ -168,17 +170,17 @@ function PageNavigation({ page }: { page: DocsPage }) {
   const next = pageIndex >= 0 && pageIndex < docsPages.length - 1 ? docsPages[pageIndex + 1] : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-3xl gap-4 border-t border-white/10 px-6 py-8 lg:grid-cols-2 lg:px-10">
+    <div className="mx-auto grid w-full max-w-3xl gap-4 border-t border-border px-6 py-8 lg:grid-cols-2 lg:px-10">
       {previous ? (
         <Link
           href={`/docs/${previous.slug}`}
-          className="rounded-2xl border border-white/10 bg-[#09090d] p-5 transition hover:border-violet-300/30 hover:bg-white/[0.035]"
+          className="docs-content rounded-2xl border border-border bg-card p-5 transition hover:border-violet-300/30 hover:bg-accent/5"
         >
-          <div className="mb-3 flex items-center gap-2 font-mono text-xs text-zinc-500">
+          <div className="mb-3 flex items-center gap-2 font-mono text-xs text-muted-foreground">
             <ArrowLeft className="size-3.5" />
             Previous
           </div>
-          <p className="font-medium text-white">{previous.title}</p>
+          <p className="font-medium text-foreground">{previous.title}</p>
         </Link>
       ) : (
         <div />
@@ -186,13 +188,13 @@ function PageNavigation({ page }: { page: DocsPage }) {
       {next ? (
         <Link
           href={`/docs/${next.slug}`}
-          className="rounded-2xl border border-white/10 bg-[#09090d] p-5 text-left transition hover:border-violet-300/30 hover:bg-white/[0.035] lg:text-right"
+          className="docs-content rounded-2xl border border-border bg-card p-5 text-left transition hover:border-violet-300/30 hover:bg-accent/5 lg:text-right"
         >
-          <div className="mb-3 flex items-center gap-2 font-mono text-xs text-zinc-500 lg:justify-end">
+          <div className="mb-3 flex items-center gap-2 font-mono text-xs text-muted-foreground lg:justify-end">
             Next
             <ArrowRight className="size-3.5" />
           </div>
-          <p className="font-medium text-white">{next.title}</p>
+          <p className="font-medium text-foreground">{next.title}</p>
         </Link>
       ) : (
         <div />
@@ -204,8 +206,8 @@ function PageNavigation({ page }: { page: DocsPage }) {
 function OnThisPage({ tocItems }: { tocItems: { title: string; href: string }[] }) {
   if (tocItems.length === 0) return null;
   return (
-    <aside className="sticky top-20 hidden h-[calc(100vh-5rem)] w-64 shrink-0 border-l border-white/10 px-6 py-10 xl:block">
-      <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
+    <aside className="sticky top-20 hidden h-[calc(100vh-5rem)] w-64 shrink-0 border-l border-border px-6 py-10 xl:block">
+      <p className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
         On This Page
       </p>
       <nav className="space-y-2">
@@ -213,7 +215,7 @@ function OnThisPage({ tocItems }: { tocItems: { title: string; href: string }[] 
           <a
             key={item.href}
             href={item.href}
-            className="block text-sm text-zinc-500 transition hover:text-white"
+            className="block text-sm text-muted-foreground transition hover:text-foreground"
           >
             {item.title}
           </a>
@@ -239,13 +241,13 @@ export function DocsLayout({ page }: { page: DocsPage }) {
   );
 
   return (
-    <main className="min-h-screen bg-[#050506] text-white">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050506]/90 backdrop-blur-xl">
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
-            <TraceLogo className="size-8 text-white" />
-            <span className="font-semibold tracking-tight">TraceLLM</span>
-            <span className="hidden rounded-md border border-white/10 px-2 py-1 font-mono text-xs text-zinc-500 sm:inline">
+            <TraceLogo className="size-8 text-foreground" />
+            <span className="font-semibold tracking-tight text-foreground">TraceLLM</span>
+            <span className="hidden rounded-md border border-border px-2 py-1 font-mono text-xs text-muted-foreground sm:inline">
               Docs
             </span>
           </Link>
@@ -253,16 +255,17 @@ export function DocsLayout({ page }: { page: DocsPage }) {
             <SearchBox value={query} onChange={setQuery} />
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Link
               href="/"
-              className="hidden rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.04] hover:text-white sm:inline-flex"
+              className="hidden rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent/10 hover:text-foreground sm:inline-flex"
             >
               Home
             </Link>
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="inline-flex size-10 items-center justify-center rounded-lg border border-white/10 text-zinc-300 md:hidden"
+              className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground md:hidden"
               aria-label="Open docs navigation"
             >
               <Menu className="size-4" />
@@ -272,9 +275,9 @@ export function DocsLayout({ page }: { page: DocsPage }) {
       </header>
 
       <div className="mx-auto flex max-w-[1600px]">
-        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-72 shrink-0 overflow-y-auto border-r border-white/10 px-5 py-6 md:block">
+        <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-72 shrink-0 overflow-y-auto border-r border-border bg-background px-5 py-6 md:block">
           <SearchBox value={query} onChange={setQuery} className="mb-4 lg:hidden" />
-          <div className="mb-5 flex items-center justify-between text-xs text-zinc-600">
+          <div className="mb-5 flex items-center justify-between text-xs text-muted-foreground">
             <span className="font-mono uppercase tracking-[0.18em]">Navigation</span>
             <span>{resultCount} pages</span>
           </div>
@@ -289,18 +292,20 @@ export function DocsLayout({ page }: { page: DocsPage }) {
         <OnThisPage tocItems={tocItems} />
       </div>
 
+      <FloatingTracey />
+
       {mobileOpen && (
         <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm md:hidden">
-          <div className="h-full w-full max-w-sm overflow-y-auto border-r border-white/10 bg-[#050506] p-5">
+          <div className="h-full w-full max-w-sm overflow-y-auto border-r border-border bg-background p-5">
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FileText className="size-5 text-violet-200" />
-                <span className="font-semibold">Docs</span>
+                <FileText className="size-5 text-violet-700 dark:text-violet-200" />
+                <span className="font-semibold text-foreground">Docs</span>
               </div>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="inline-flex size-10 items-center justify-center rounded-lg border border-white/10 text-zinc-300"
+                className="inline-flex size-10 items-center justify-center rounded-lg border border-border text-muted-foreground"
                 aria-label="Close docs navigation"
               >
                 <X className="size-4" />

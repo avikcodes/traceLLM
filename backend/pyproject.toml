@@ -3,8 +3,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tracellm"
-version = "0.2.0"
+name = "tracellm-cli"
+version = "0.1.0"
 description = "TraceLLM — Open-source LLM observability, tracing, and replay infrastructure."
 readme = "README.md"
 requires-python = ">=3.11"

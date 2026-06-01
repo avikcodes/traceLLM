@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { TraceyTip } from "@/components/docs/tracey-tip";
+import { MongoDBRequirement } from "@/components/docs/mongodb-notice";
 
 type DocSection = {
   id: string;
@@ -14,10 +16,10 @@ function Callout({
   children: ReactNode;
 }) {
   const colors = {
-    info: "border-violet-400/20 bg-violet-400/10 text-violet-200",
-    tip: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
-    warning: "border-amber-400/20 bg-amber-400/10 text-amber-200",
-    note: "border-blue-400/20 bg-blue-400/10 text-blue-200",
+    info: "border-violet-400/20 bg-violet-400/10 text-violet-700 dark:text-violet-200",
+    tip: "border-emerald-400/20 bg-emerald-400/10 text-emerald-700 dark:text-emerald-200",
+    warning: "border-amber-400/20 bg-amber-400/10 text-amber-700 dark:text-amber-200",
+    note: "border-blue-400/20 bg-blue-400/10 text-blue-700 dark:text-blue-200",
   };
   const labels = { info: "Info", tip: "Tip", warning: "Warning", note: "Note" };
   return (
@@ -38,19 +40,19 @@ function CodeBlock({
   label?: string;
 }) {
   return (
-    <div className="my-6 overflow-hidden rounded-2xl border border-white/10 bg-black">
+    <div className="my-6 overflow-hidden rounded-2xl border border-border bg-card dark:border-white/10 dark:bg-black">
       {label && (
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <span className="font-mono text-xs text-zinc-500">{label}</span>
-          <span className="cursor-pointer font-mono text-xs text-zinc-600 transition hover:text-zinc-400">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3 dark:border-white/10">
+          <span className="font-mono text-xs text-muted-foreground">{label}</span>
+          <span className="cursor-pointer font-mono text-xs text-muted-foreground transition hover:text-foreground">
             Copy
           </span>
         </div>
       )}
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2 font-mono text-xs text-zinc-500">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-2 font-mono text-xs text-muted-foreground dark:border-white/10">
         <span>{lang}</span>
       </div>
-      <pre className="overflow-x-auto p-4 font-mono text-sm leading-7 text-zinc-300">
+      <pre className="overflow-x-auto p-4 font-mono text-sm leading-7 text-foreground dark:text-zinc-300">
         {code}
       </pre>
     </div>
@@ -67,36 +69,36 @@ function StepCard({
   children: ReactNode;
 }) {
   return (
-    <div className="my-6 rounded-2xl border border-white/10 bg-[#09090d] p-5">
+    <div className="my-6 rounded-2xl border border-border bg-card p-5 dark:border-white/10 dark:bg-[#09090d]">
       <div className="mb-2 flex items-center gap-3">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-400/10 font-mono text-sm text-violet-200">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-violet-400/10 font-mono text-sm text-violet-700 dark:text-violet-200">
           {number}
         </span>
-        <h3 className="font-medium text-white">{title}</h3>
+        <h3 className="font-medium text-foreground dark:text-white">{title}</h3>
       </div>
-      <div className="pl-10 text-sm leading-7 text-zinc-400">{children}</div>
+      <div className="pl-10 text-sm leading-7 text-muted-foreground dark:text-zinc-400">{children}</div>
     </div>
   );
 }
 
 function Table({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="my-6 overflow-hidden rounded-2xl border border-white/10">
+    <div className="my-6 overflow-hidden rounded-2xl border border-border dark:border-white/10">
       <table className="w-full text-left text-sm">
-        <thead className="border-b border-white/10 bg-[#09090d]">
+        <thead className="border-b border-border bg-muted/50 dark:border-white/10 dark:bg-[#09090d]">
           <tr>
             {headers.map((h) => (
-              <th key={h} className="px-4 py-3 font-mono text-xs uppercase tracking-wider text-zinc-500">
+              <th key={h} className="px-4 py-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5">
+        <tbody className="divide-y divide-border/50 dark:divide-white/5">
           {rows.map((row, i) => (
             <tr key={i}>
               {row.map((cell, j) => (
-                <td key={j} className="px-4 py-3 text-zinc-400">
+                <td key={j} className="px-4 py-3 text-muted-foreground dark:text-zinc-400">
                   {cell}
                 </td>
               ))}
@@ -115,6 +117,10 @@ const sections: Record<string, DocSection[]> = {
       title: "What is TraceLLM?",
       content: (
         <>
+          <TraceyTip variant="welcome">
+            Welcome to TraceLLM! I&apos;m Tracey, your guide. I&apos;ll help you get started with
+            installation, setup, and troubleshooting throughout this documentation.
+          </TraceyTip>
           <p className="mt-4 leading-7 text-zinc-400">
             TraceLLM is an open-source, local-first observability platform for LLMs and AI agents.
             It captures every step of every execution — prompts, responses, tool calls, latency,
@@ -133,7 +139,7 @@ const sections: Record<string, DocSection[]> = {
             ].map(([label, desc]) => (
               <div
                 key={label}
-                className="rounded-xl border border-white/10 bg-[#09090d] p-4"
+                className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4"
               >
                 <p className="mb-0.5 font-medium text-white">{label}</p>
                 <p className="text-sm leading-6 text-zinc-500">{desc}</p>
@@ -267,6 +273,10 @@ const sections: Record<string, DocSection[]> = {
             Get from zero to your first trace in under two minutes. You only need a terminal and
             Python 3.10+.
           </p>
+          <TraceyTip variant="tip">
+            Pro tip: make sure you have Python 3.10+ and MongoDB ready before starting. I&apos;ll guide
+            you through each step.
+          </TraceyTip>
         </>
       ),
     },
@@ -299,19 +309,19 @@ const sections: Record<string, DocSection[]> = {
             This launches three services automatically:
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">Dashboard</p>
               <p className="text-sm leading-6 text-zinc-500">
                 Web UI at <span className="font-mono text-zinc-300">localhost:3000</span>
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">WebSocket</p>
               <p className="text-sm leading-6 text-zinc-500">
                 Real-time event stream at <span className="font-mono text-zinc-300">localhost:3200</span>
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">MongoDB</p>
               <p className="text-sm leading-6 text-zinc-500">
                 Trace storage at <span className="font-mono text-zinc-300">localhost:27017</span>
@@ -394,6 +404,19 @@ const sections: Record<string, DocSection[]> = {
 
   "getting-started/installation": [
     {
+      id: "requirements",
+      title: "Requirements",
+      content: (
+        <>
+          <ul className="mt-4 list-inside list-disc space-y-2 leading-7 text-zinc-400">
+            <li>Python 3.11+</li>
+            <li>MongoDB Atlas or Self-Hosted MongoDB</li>
+          </ul>
+          <MongoDBRequirement />
+        </>
+      ),
+    },
+    {
       id: "prerequisites",
       title: "Prerequisites",
       content: (
@@ -422,6 +445,21 @@ const sections: Record<string, DocSection[]> = {
             SDK, and WebSocket client — are bundled in a single package.
           </p>
           <CodeBlock code="pip install tracellm" lang="bash" label="terminal" />
+          <CodeBlock
+            code={`# Configuration
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=tracellm
+
+# Start
+tracellm start`}
+            lang="bash"
+            label="Setup"
+          />
+          <TraceyTip variant="guide">
+            After installing, set your <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">MONGO_URL</code> and{" "}
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">DB_NAME</code> environment variables, then run{" "}
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">tracellm start</code> to launch the stack.
+          </TraceyTip>
           <p className="mt-4 leading-7 text-zinc-400">To install with optional extras:</p>
           <CodeBlock
             code={`pip install "tracellm[openai]"     # OpenAI integration
@@ -510,6 +548,10 @@ tracellm --help`}
             This walkthrough creates your first trace, explains what happens at each internal
             stage, and shows you how to inspect and replay the result.
           </p>
+          <TraceyTip variant="guide">
+            I&apos;ll walk you through creating your first trace step by step. Follow along in your
+            terminal — it only takes a minute.
+          </TraceyTip>
         </>
       ),
     },
@@ -638,7 +680,7 @@ A transformer is a neural network architecture...`}
               <a
                 key={title}
                 href={href}
-                className="rounded-2xl border border-white/10 bg-[#09090d] p-5 transition hover:border-violet-300/30 hover:bg-white/[0.035]"
+                className="rounded-2xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-5 transition hover:border-violet-300/30 hover:bg-white/[0.035]"
               >
                 <p className="mb-1 font-medium text-white">{title}</p>
                 <p className="text-sm leading-6 text-zinc-500">{desc}</p>
@@ -2053,11 +2095,11 @@ def fulfill_order(order: dict) -> dict:
             lifecycle is identical in both paths:
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">Sync Path</p>
               <p className="text-sm leading-6 text-zinc-500">result = func(*args, **kwargs)</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">Async Path</p>
               <p className="text-sm leading-6 text-zinc-500">result = await func(*args, **kwargs)</p>
             </div>
@@ -4655,28 +4697,28 @@ Replay`}
             is no SaaS backend, no telemetry service, and no data egress.
           </p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">No Cloud Dependencies</p>
               <p className="text-sm leading-6 text-zinc-500">
                 MongoDB runs locally (or your own Atlas cluster). The API, WebSocket, and
                 dashboard are local processes. Zero data leaves your network.
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">Single-Command Stack</p>
               <p className="text-sm leading-6 text-zinc-500">
                 <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-xs text-zinc-300">tracellm start</code> boots the entire stack: FastAPI on port 8000,
                 WebSocket on /ws, auto-detects MongoDB. No Docker Compose required.
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">Offline-Capable</p>
               <p className="text-sm leading-6 text-zinc-500">
                 The <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-xs text-zinc-300">@trace</code> decorator and CLI work without MongoDB. Traces are
                 finalized in memory; persistence gracefully degrades.
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#09090d] p-4">
+            <div className="rounded-xl border border-border bg-card dark:border-white/10 dark:bg-[#09090d] p-4">
               <p className="mb-0.5 font-medium text-white">MIT Licensed</p>
               <p className="text-sm leading-6 text-zinc-500">
                 Fully open-source. No paid tiers, no usage limits, no vendor lock-in. You
@@ -4932,6 +4974,11 @@ Response:
       title: "Environment Variables",
       content: (
         <>
+          <MongoDBRequirement />
+          <TraceyTip variant="tip">
+            Ensure <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">MONGO_URL</code> and <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">DB_NAME</code> are set before starting
+            the stack. Without them, traces are not persisted.
+          </TraceyTip>
           <p className="mt-4 leading-7 text-zinc-400">
             TraceLLM reads configuration from environment variables at startup. Variables can
             be set in a <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-zinc-300">.env</code> file (loaded via <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-zinc-300">python-dotenv</code>) or
@@ -5057,6 +5104,12 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`}
       title: "MongoDB",
       content: (
         <>
+          <MongoDBRequirement />
+          <TraceyTip variant="guide">
+            TraceLLM requires a MongoDB connection before traces can be stored. Make sure your
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs"> MONGO_URL</code> and <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">DB_NAME</code> are set before running{" "}
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">tracellm start</code>.
+          </TraceyTip>
           <p className="mt-4 leading-7 text-zinc-400">
             TraceLLM uses MongoDB as its persistent store for all trace documents, project
             records, and API keys. The connection is managed via the Motor async driver
@@ -6793,6 +6846,43 @@ Replay complete`}
   ],
 
   "resources/troubleshooting": [
+    {
+      id: "troubleshooting-mongo-url",
+      title: "MONGO_URL not set",
+      content: (
+        <>
+          <p className="mt-4 leading-7 text-zinc-400">
+            If you see a warning that traces are not being persisted, the most likely cause
+            is a missing or incorrect <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-zinc-300">MONGO_URL</code> environment variable.
+          </p>
+          <p className="mt-4 leading-7 text-zinc-400 font-medium text-white">Why it happens:</p>
+          <p className="mt-2 leading-7 text-zinc-400">
+            TraceLLM requires a MongoDB connection to store trace data. When{" "}
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-zinc-300">MONGO_URL</code> is not set or points to an unreachable server, the
+            <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-zinc-300"> @trace</code> decorator and CLI complete their work in memory but the
+            trace is never saved to the database.
+          </p>
+          <p className="mt-4 leading-7 text-zinc-400 font-medium text-white">How to fix it:</p>
+          <ol className="mt-2 list-inside list-decimal space-y-2 leading-7 text-zinc-400">
+            <li>Create a <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-zinc-300">.env</code> file in your project root</li>
+            <li>Add your MongoDB connection string and database name</li>
+            <li>Restart the TraceLLM stack with <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-sm text-zinc-300">tracellm start</code></li>
+          </ol>
+          <CodeBlock
+            code={`# Example .env file
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=tracellm`}
+            lang="bash"
+            label=".env"
+          />
+          <TraceyTip variant="troubleshooting">
+            Use <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-xs">mongosh --eval &quot;db.runCommand(&#123; ping: 1 &#125;)&quot;</code> to test
+            your MongoDB connection. If it fails, check that your MongoDB instance is running
+            and the URL is correct.
+          </TraceyTip>
+        </>
+      ),
+    },
     {
       id: "troubleshooting-common",
       title: "Common Issues",

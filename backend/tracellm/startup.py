@@ -14,7 +14,12 @@ from tracellm.banner import render_banner
 from tracellm.mascot import MascotState, message
 from tracellm.utils import console
 
-load_dotenv()
+_dotenv_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=_dotenv_path)
+
+console.print(f"[dim]CWD: {Path.cwd()}[/dim]")
+console.print(f"[dim].env path: {_dotenv_path}[/dim]")
+console.print(f"[dim]MONGO_URL {'found' if os.getenv('MONGO_URL') else 'NOT found'}[/dim]")
 
 
 def _check_mongodb() -> bool:

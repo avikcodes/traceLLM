@@ -51,38 +51,38 @@
 :root {
   --font-space-grotesk: "Segoe UI", "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-jetbrains-mono: "Consolas", "SFMono-Regular", "Liberation Mono", "Courier New", monospace;
-  --background: #07040B;
-  --foreground: #F5F3FF;
-  --card: #151021;
-  --card-foreground: #F5F3FF;
-  --popover: #151021;
-  --popover-foreground: #F5F3FF;
-  --primary: #7C5CFF;
+  --background: #F8F8FC;
+  --foreground: #0B0B14;
+  --card: #FFFFFF;
+  --card-foreground: #0B0B14;
+  --popover: #FFFFFF;
+  --popover-foreground: #0B0B14;
+  --primary: #6D4AFF;
   --primary-foreground: #FFFFFF;
-  --secondary: #0F0A17;
-  --secondary-foreground: #F5F3FF;
-  --muted: #0F0A17;
-  --muted-foreground: #6E6785;
-  --accent: #7C5CFF;
+  --secondary: #EDECF2;
+  --secondary-foreground: #0B0B14;
+  --muted: #EDECF2;
+  --muted-foreground: #4E4A61;
+  --accent: #6D4AFF;
   --accent-foreground: #FFFFFF;
   --destructive: oklch(0.7 0.19 22);
-  --border: rgba(124, 92, 255, 0.1);
-  --input: rgba(124, 92, 255, 0.12);
-  --ring: rgba(182, 168, 255, 0.2);
+  --border: rgba(109, 74, 255, 0.18);
+  --input: rgba(109, 74, 255, 0.14);
+  --ring: rgba(109, 74, 255, 0.3);
   --chart-1: oklch(0.88 0 0);
   --chart-2: oklch(0.76 0 0);
   --chart-3: oklch(0.64 0 0);
   --chart-4: oklch(0.54 0 0);
   --chart-5: oklch(0.42 0 0);
   --radius: 0.75rem;
-  --sidebar: #0F0A17;
-  --sidebar-foreground: #F5F3FF;
-  --sidebar-primary: #7C5CFF;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0B0B14;
+  --sidebar-primary: #6D4AFF;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #7C5CFF;
+  --sidebar-accent: #6D4AFF;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: rgba(124, 92, 255, 0.1);
-  --sidebar-ring: rgba(182, 168, 255, 0.2);
+  --sidebar-border: rgba(109, 74, 255, 0.18);
+  --sidebar-ring: rgba(109, 74, 255, 0.3);
 }
 
 .dark {
@@ -130,12 +130,11 @@
 
   body {
     @apply min-h-screen bg-background text-foreground;
-    background-color: #07040B;
   }
 
   ::selection {
     background: rgba(124, 92, 255, 0.2);
-    color: #F5F3FF;
+    color: var(--foreground);
   }
 }
 
@@ -168,4 +167,59 @@
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* Docs content light mode fixes - scoped overrides */
+.light .docs-content .text-zinc-400,
+.light .docs-content .text-zinc-500,
+.light .docs-content .text-zinc-600 {
+  color: var(--muted-foreground);
+}
+
+.light .docs-content .text-white,
+.light .docs-content .font-medium.text-white {
+  color: var(--foreground);
+}
+
+.light .docs-content .text-zinc-300 {
+  color: var(--foreground);
+}
+
+.light .docs-content .text-violet-200,
+.light .docs-content .text-emerald-200,
+.light .docs-content .text-amber-200,
+.light .docs-content .text-blue-200 {
+  color: var(--foreground);
+}
+
+.light .docs-content .text-violet-300 {
+  color: var(--primary);
+}
+
+.light .docs-content .border-white\/10 {
+  border-color: var(--border);
+}
+
+.light .docs-content .bg-black {
+  background-color: var(--card);
+}
+
+.light .docs-content .bg-white\/10 {
+  background-color: var(--muted);
+}
+
+.light .docs-content .bg-white\/5 {
+  background-color: var(--muted);
+}
+
+.light .docs-content .hover\:text-white:hover {
+  color: var(--foreground);
+}
+
+.light .docs-content .hover\:text-violet-200:hover {
+  color: var(--primary);
+}
+
+.light .docs-content .hover\:border-violet-300\/30:hover {
+  border-color: var(--border);
 }

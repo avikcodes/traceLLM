@@ -11,7 +11,9 @@ import {
   Code2,
   Copy,
   Database,
+  Download,
   FileJson,
+  Gauge,
   GitBranch,
   LayoutDashboard,
   MonitorDot,
@@ -19,10 +21,12 @@ import {
   RefreshCcw,
   Repeat2,
   SearchCode,
+  Shield,
   Terminal,
   Workflow,
   Zap,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -37,83 +41,116 @@ const heroLogs = [
   { label: "done", text: "trace exported to ./exports/run_7c91.json", tone: "text-emerald-200" },
 ];
 
-const howItWorks = [
+const requirements = [
+  {
+    icon: Terminal,
+    title: "Python 3.11+",
+    description: "TraceLLM requires Python 3.11 or newer.",
+  },
+  {
+    icon: Database,
+    title: "MongoDB Atlas or Self-Hosted MongoDB",
+    description: "A running MongoDB instance for trace storage.",
+  },
+  {
+    icon: Code2,
+    title: "PyPI Installation",
+    command: "pip install tracellm-cli",
+  },
+  {
+    icon: FileJson,
+    title: "Environment Configuration",
+    description: "Set MONGO_URL and DB_NAME in your environment.",
+  },
+];
+
+const installSteps = [
   {
     title: "Install",
-    command: "pip install tracellm",
-    description: "Add TraceLLM to the environment where your agent already runs.",
+    command: "pip install tracellm-cli",
+    description: "Install the TraceLLM CLI package from PyPI.",
+  },
+  {
+    title: "Configure",
+    description: 'Create a .env file with your MongoDB connection string and database name.',
+    envLines: ["MONGO_URL=your_mongodb_url", "DB_NAME=tracellm"],
   },
   {
     title: "Start",
     command: "tracellm start",
-    description: "Launch the local collector and optional visual dashboard.",
+    description: "Launch the TraceLLM backend service and trace collector.",
   },
   {
-    title: "Trace",
-    command: 'tracellm trace "Explain transformers"',
-    description: "Capture prompts, tool calls, retries, latency, tokens, and outputs.",
+    title: "Dashboard",
+    description: "Open the dashboard in your browser to view live traces.",
+    isLink: true,
   },
 ];
 
 const features = [
   {
     icon: SearchCode,
-    title: "Real LLM Tracing",
-    eyebrow: "Prompts, models, and responses",
-    description:
-      "See the exact prompt, model parameters, streamed output, token usage, latency, and status for every LLM call without digging through scattered logs.",
-    bullets: ["Prompt and response capture", "Token and latency breakdowns", "Model parameters and metadata"],
-    visual: "trace",
+    title: "Prompt Tracing",
+    description: "Capture full prompt inputs, model responses, parameters, and metadata for every LLM call.",
   },
   {
     icon: Repeat2,
-    title: "Execution Replay",
-    eyebrow: "Recreate the run",
-    description:
-      "Replay the chain of decisions after an agent fails. Inspect each step in order, including inputs, outputs, retries, and intermediate state.",
-    bullets: ["Step-by-step execution tree", "Retry and failure checkpoints", "Exportable replay artifacts"],
-    visual: "replay",
+    title: "Replay Sessions",
+    description: "Replay execution chains step-by-step to inspect inputs, outputs, retries, and intermediate state at any point.",
   },
   {
     icon: MonitorDot,
     title: "Live Monitoring",
-    eyebrow: "Watch runs as they happen",
-    description:
-      "Stream execution events while your agent is running so slow calls, loops, and tool failures become visible immediately.",
-    bullets: ["Realtime terminal events", "Latency spikes and status changes", "Run-level health signals"],
-    visual: "monitor",
+    description: "Stream execution events in real time as your agent runs. See latency spikes, tool failures, and status changes instantly.",
   },
   {
     icon: Workflow,
-    title: "Agent Observability",
-    eyebrow: "Tools are first-class",
-    description:
-      "TraceLLM treats tool calls, retrieval steps, branches, and handoffs as part of the execution graph—not as a blob of text in a log line.",
-    bullets: ["Tool inputs and outputs", "Branch and retry visibility", "Agent flow reconstruction"],
-    visual: "agent",
+    title: "Tool Call Visibility",
+    description: "Every tool invocation — inputs, outputs, duration, and nested calls — is captured as a first-class event in the trace.",
   },
   {
-    icon: FileJson,
-    title: "Export & Analysis",
-    eyebrow: "Own your traces",
-    description:
-      "Save traces as structured files for debugging sessions, incident reviews, notebooks, CI checks, or sharing with teammates.",
-    bullets: ["JSON trace exports", "Portable debugging artifacts", "Analysis-ready execution data"],
-    visual: "export",
+    icon: Gauge,
+    title: "Token Usage Tracking",
+    description: "Track token consumption per model call, per session, and across your entire application.",
   },
   {
-    icon: Terminal,
-    title: "Terminal-first Workflow",
-    eyebrow: "No context switch required",
-    description:
-      "Use TraceLLM from the same shell where you run your agents. Open the dashboard only when a visual layer helps.",
-    bullets: ["CLI-first commands", "Works with local development", "Dashboard stays secondary"],
-    visual: "terminal",
+    icon: Download,
+    title: "Session Export",
+    description: "Export traces as structured JSON files for debugging, sharing, CI pipelines, or offline analysis.",
+  },
+  {
+    icon: Shield,
+    title: "Local First Architecture",
+    description: "All trace data stays on your machine. No external servers, no data leaving your environment.",
+  },
+  {
+    icon: Code2,
+    title: "Open Source",
+    description: "Fully open-source under the MIT license. Inspect, modify, and self-host without restrictions.",
+  },
+];
+
+const faqItems = [
+  {
+    question: "Do I need MongoDB?",
+    answer: "Yes. TraceLLM Version 1 stores traces in MongoDB.",
+  },
+  {
+    question: "Is TraceLLM open source?",
+    answer: "Yes. TraceLLM is fully open source under the MIT license.",
+  },
+  {
+    question: "Does data leave my machine?",
+    answer: "No. TraceLLM is local-first. All trace data stays on your machine.",
+  },
+  {
+    question: "Do I need an API key?",
+    answer: "No. TraceLLM does not require any API key or external service registration.",
   },
 ];
 
 const cliCommands = [
-  "pip install tracellm",
+  "pip install tracellm-cli",
   "tracellm start",
   "tracellm trace",
   "tracellm replay",
@@ -147,7 +184,7 @@ const demoCards = [
 ];
 
 const demoCommands = [
-  "pip install tracellm",
+  "pip install tracellm-cli",
   "tracellm start",
   'tracellm trace "Explain transformers"',
 ];
@@ -545,22 +582,23 @@ function ProductDemo({ video = { type: "placeholder" } }: { video?: ProductDemoV
 
 export function LandingPage() {
   return (
-    <main className="min-h-screen bg-[#050506] text-white">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_50%_0%,rgba(124,58,237,0.16),transparent_32%),linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:100%_100%,56px_56px,56px_56px]" />
 
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050506]/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
           <a href="#" className="flex items-center gap-3">
             <TraceLogo className="size-8 text-white" />
             <span className="font-semibold tracking-tight">TraceLLM</span>
           </a>
           <div className="hidden items-center gap-6 font-mono text-xs text-zinc-400 md:flex">
-            <a className="transition hover:text-white" href="#how-it-works">How it works</a>
+            <a className="transition hover:text-white" href="#installation">Installation</a>
             <a className="transition hover:text-white" href="#features">Features</a>
             <a className="transition hover:text-white" href="#cli">CLI</a>
             <Link className="transition hover:text-white" href="/docs">Docs</Link>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <a
               href="https://x.com/Avikzx"
               target="_blank"
@@ -588,40 +626,38 @@ export function LandingPage() {
         <div>
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 font-mono text-xs text-violet-200">
             <Activity className="size-3.5" />
-            Open-source, terminal-first observability
+            Open-source, local-first observability
           </div>
           <h1 className="max-w-4xl text-5xl font-semibold tracking-[-0.06em] text-white sm:text-6xl lg:text-7xl">
-            Trace, Replay, and Debug AI Agents from Your Terminal
+            Open-Source LLM Observability for Developers
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-400">
-            Open-source observability for LLMs and AI agents. Monitor prompts, tool calls,
-            retries, latency, and execution flows in real time.
+            Trace prompts, responses, latency, token usage, and tool calls locally. Replay sessions,
+            inspect failures, and debug AI applications with full visibility.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a
-              href={repoUrl}
-              target="_blank"
-              rel="noreferrer"
+              href="#installation"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-medium text-black transition hover:bg-zinc-200"
             >
-              <GithubMark className="size-4" />
-              GitHub
+              Get Started
+              <ArrowRight className="size-4" />
             </a>
             <a
               href="/docs"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/10 px-5 text-sm font-medium text-zinc-100 transition hover:border-violet-400/40 hover:bg-white/[0.04]"
             >
               <BookOpen className="size-4" />
-              Docs
+              View Docs
             </a>
           </div>
           <div className="mt-8 max-w-xl rounded-2xl border border-white/10 bg-black p-3">
             <div className="flex items-center justify-between gap-4 rounded-xl bg-white/[0.03] px-4 py-3">
               <code className="font-mono text-sm text-zinc-100">
                 <span className="mr-2 text-violet-300">$</span>
-                pip install tracellm
+                pip install tracellm-cli
               </code>
-              <CopyButton value="pip install tracellm" />
+              <CopyButton value="pip install tracellm-cli" />
             </div>
           </div>
           <div className="mt-6 grid max-w-xl grid-cols-3 gap-3 text-xs text-zinc-500">
@@ -633,17 +669,52 @@ export function LandingPage() {
         <TerminalWindow />
       </section>
 
-      <ProductDemo />
-
-      <section id="how-it-works" className="border-y border-white/10 bg-white/[0.015] py-24">
+      <section className="border-y border-white/10 bg-white/[0.015] py-24">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <SectionHeader
-            eyebrow="How it works"
-            title="Three commands from blank shell to visible trace"
-            description="TraceLLM is designed to answer the practical question first: what happened inside this LLM or agent run?"
+            eyebrow="Before You Start"
+            title="Requirements"
+            description="Make sure your environment meets these prerequisites before installing TraceLLM."
           />
-          <div className="mt-14 grid gap-4 lg:grid-cols-3">
-            {howItWorks.map((step, index) => (
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {requirements.map((req) => {
+              const Icon = req.icon;
+              return (
+                <div key={req.title} className="flex flex-col rounded-2xl border border-white/10 bg-[#09090d] p-6">
+                  <Icon className="size-5 text-violet-200" />
+                  <h3 className="mt-4 text-lg font-semibold text-white">{req.title}</h3>
+                  {req.description && (
+                    <p className="mt-2 text-sm leading-6 text-zinc-400">{req.description}</p>
+                  )}
+                  {req.command && (
+                    <div className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-black px-3 py-2">
+                      <code className="truncate font-mono text-xs text-zinc-100">{req.command}</code>
+                      <CopyButton value={req.command} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mx-auto mt-8 max-w-2xl rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-5 py-4">
+            <p className="text-sm leading-6 text-amber-200">
+              <strong>Note:</strong> Version 1 requires MongoDB for trace storage. SQLite support is planned for a future release.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <ProductDemo />
+
+      <section id="installation" className="border-y border-white/10 bg-white/[0.015] py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <SectionHeader
+            eyebrow="Installation"
+            title="Get Started in Four Steps"
+            description="Install TraceLLM, configure your MongoDB connection, and start tracing in minutes."
+          />
+          <div className="mt-14 grid gap-4 lg:grid-cols-4">
+            {installSteps.map((step, index) => (
               <div key={step.title} className="relative rounded-2xl border border-white/10 bg-[#09090d] p-6">
                 <div className="mb-8 flex items-center justify-between">
                   <span className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-600">
@@ -655,11 +726,31 @@ export function LandingPage() {
                 </div>
                 <h3 className="text-2xl font-semibold tracking-tight text-white">{step.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-zinc-400">{step.description}</p>
-                <div className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black px-4 py-3">
-                  <code className="truncate font-mono text-sm text-zinc-100">{step.command}</code>
-                  <CopyButton value={step.command} label="Copy" />
-                </div>
-                {index < howItWorks.length - 1 && (
+                {step.command && (
+                  <div className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black px-4 py-3">
+                    <code className="truncate font-mono text-sm text-zinc-100">{step.command}</code>
+                    <CopyButton value={step.command} label="Copy" />
+                  </div>
+                )}
+                {step.envLines && (
+                  <div className="mt-4 space-y-1 rounded-xl border border-white/10 bg-black px-4 py-3 font-mono text-xs text-zinc-100">
+                    {step.envLines.map((line) => (
+                      <div key={line} className="flex items-center justify-between gap-2">
+                        <span>{line}</span>
+                        <CopyButton value={line} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {step.isLink && (
+                  <div className="mt-6">
+                    <span className="inline-flex items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/10 px-4 py-3 font-mono text-sm text-violet-200">
+                      <LayoutDashboard className="size-4" />
+                      http://localhost:3000
+                    </span>
+                  </div>
+                )}
+                {index < installSteps.length - 1 && (
                   <ArrowRight className="absolute -right-5 top-1/2 hidden size-6 text-zinc-700 lg:block" />
                 )}
               </div>
@@ -702,51 +793,72 @@ export function LandingPage() {
       <section id="features" className="py-24">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <SectionHeader
-            eyebrow="Feature storytelling"
-            title="Built around the failure modes of real AI agents"
-            description="Every section below is ready for a real screenshot later. The placeholders communicate the intended product surface without pretending to be production data."
+            eyebrow="Features"
+            title="Everything You Need to Debug AI Applications"
+            description="TraceLLM gives you full visibility into every LLM call, tool invocation, and agent decision."
           />
-          <div className="mt-16 space-y-20">
-            {features.map((feature, index) => {
+          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {features.map((feature) => {
               const Icon = feature.icon;
-              const visual = <VisualPlaceholder type={feature.visual} title={feature.title} />;
-              const copy = (
-                <div>
-                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 font-mono text-xs text-violet-200">
-                    <Icon className="size-3.5" />
-                    {feature.eyebrow}
-                  </div>
-                  <h3 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-5 text-base leading-7 text-zinc-400">{feature.description}</p>
-                  <div className="mt-7 space-y-3">
-                    {feature.bullets.map((bullet) => (
-                      <div key={bullet} className="flex items-center gap-3 text-sm text-zinc-300">
-                        <Check className="size-4 text-violet-300" />
-                        {bullet}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-
               return (
-                <div key={feature.title} className="grid items-center gap-10 lg:grid-cols-2">
-                  {index % 2 === 0 ? (
-                    <>
-                      {visual}
-                      {copy}
-                    </>
-                  ) : (
-                    <>
-                      <div className="lg:order-2">{visual}</div>
-                      <div className="lg:order-1">{copy}</div>
-                    </>
-                  )}
+                <div key={feature.title} className="rounded-2xl border border-white/10 bg-[#09090d] p-6 transition hover:border-violet-400/40 hover:bg-violet-400/[0.04]">
+                  <Icon className="size-5 text-violet-200" />
+                  <h3 className="mt-5 text-lg font-semibold text-white">{feature.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-zinc-400">{feature.description}</p>
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-white/[0.015] py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <SectionHeader
+            eyebrow="Architecture"
+            title="How TraceLLM Works"
+            description="From your application code to the dashboard — trace data flows through a simple, local pipeline."
+          />
+          <div className="mt-14 flex flex-col items-center gap-0">
+            {["Developer App", "TraceLLM SDK", "TraceLLM Backend", "MongoDB", "Dashboard"].map((item, index) => (
+              <div key={item} className="flex flex-col items-center">
+                <div className="flex w-64 items-center justify-center rounded-2xl border border-white/10 bg-[#09090d] px-8 py-5">
+                  <span className="text-center font-mono text-sm font-medium text-white">{item}</span>
+                </div>
+                {index < 4 && (
+                  <div className="flex flex-col items-center py-2">
+                    <svg className="size-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <SectionHeader
+            eyebrow="FAQ"
+            title="Frequently Asked Questions"
+            description="Common questions about TraceLLM, its requirements, and architecture."
+          />
+          <div className="mx-auto mt-14 max-w-3xl space-y-4">
+            {faqItems.map((item) => (
+              <details key={item.question} className="group rounded-2xl border border-white/10 bg-[#09090d] transition open:border-violet-400/40">
+                <summary className="flex cursor-pointer items-center justify-between px-6 py-5 text-base font-medium text-white transition hover:text-violet-200">
+                  {item.question}
+                  <svg className="size-5 text-zinc-500 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div className="border-t border-white/10 px-6 pb-5 pt-4">
+                  <p className="text-sm leading-6 text-zinc-400">{item.answer}</p>
+                </div>
+              </details>
+            ))}
           </div>
         </div>
       </section>
