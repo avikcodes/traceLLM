@@ -18,420 +18,439 @@ Track prompts, latency, token usage, execution traces, tool calls, retries, hall
 
 </div>
 
+
 ---
 
-# What is TraceLLM?
+# Demo
 
-Modern AI systems are extremely difficult to debug.
+> See TraceLLM monitoring AI agents in real time.
 
-When an LLM application fails, developers usually cannot answer:
+<p align="center">
 
-- Which prompt caused the issue?
-- Why was the response slow?
-- Which agent/tool failed?
-- How many tokens were consumed?
-- What execution path did the agent take?
-- Which step caused hallucination or retry loops?
+🎥 DEMO VIDEO HERE
+
+<!-- Replace with your demo video -->
+
+https://your-demo-video-link.com
+
+</p>
+
+---
+
+# Screenshots
+
+## Dashboard Overview
+
+![Dashboard](docs/assets/dashboard.png)
+
+---
+
+## Live Agent Monitoring
+
+![Monitoring](docs/assets/monitoring.png)
+
+---
+
+## Execution Replay
+
+![Replay](docs/assets/replay.png)
+
+---
+
+## Prompt & Token Analytics
+
+![Analytics](docs/assets/analytics.png)
+
+---
+
+# Why TraceLLM?
+
+Modern AI applications are difficult to debug.
+
+Traditional logs tell you:
+
+```text
+Request received
+Response generated
+Request completed
+```
+
+They do NOT tell you:
+
+- Which prompt was sent
+- Which tools were called
+- Why the model failed
+- Where latency occurred
+- Which step hallucinated
+- Which retry fixed the issue
+- How agent decisions evolved
 
 TraceLLM solves this problem.
 
-It acts as an observability layer for AI applications.
+---
 
-Think:
+# What TraceLLM Captures
 
-| Traditional Infra | AI Infra Equivalent |
-|---|---|
-| Datadog | TraceLLM |
-| Sentry | TraceLLM |
-| OpenTelemetry | TraceLLM |
-| APM Tools | TraceLLM |
+| Feature | Supported |
+|----------|------------|
+| Prompt Tracking | ✅ |
+| Response Tracking | ✅ |
+| Tool Call Inspection | ✅ |
+| Agent Workflow Replay | ✅ |
+| Latency Analysis | ✅ |
+| Token Monitoring | ✅ |
+| Error Tracking | ✅ |
+| Real-time Streaming | ✅ |
+| OpenAI Integration | ✅ |
+| LangChain Integration | ✅ |
+| WebSocket Monitoring | ✅ |
 
 ---
 
-# Core Idea
+# Architecture
 
-```text
-Developer Code
-      ↓
-TraceLLM SDK
-      ↓
-Capture AI Execution
-      ↓
-Store Structured Traces
-      ↓
-Visualize + Analyze
+```mermaid
+flowchart LR
+
+A[AI Application]
+--> B[TraceLLM SDK]
+
+B --> C[Trace Collector]
+
+C --> D[(MongoDB)]
+
+C --> E[Live WebSocket Stream]
+
+E --> F[Dashboard]
+
+D --> G[Replay Engine]
+
+G --> F
 ```
 
 ---
 
-# Example
+# How It Works
 
-Instead of writing this:
+```mermaid
+sequenceDiagram
 
-```python
-response = llm.generate(prompt)
-```
+participant User
+participant App
+participant TraceLLM
+participant LLM
+participant DB
 
-You write:
+User->>App: Ask Question
 
-```python
-from sdk import trace
+App->>TraceLLM: Start Trace
 
-@trace(prompt="Explain transformers")
-def llm_response():
-    return model.generate()
-```
+TraceLLM->>LLM: Send Prompt
 
-TraceLLM automatically captures:
+LLM-->>TraceLLM: Response
 
-- prompt
-- response
-- latency
-- token usage
-- timestamps
-- execution metadata
+TraceLLM->>DB: Save Trace
 
----
+TraceLLM-->>App: Return Result
 
-# CLI Demo
-
-```bash
-python -m sdk.tracer demo
-```
-
----
-
-# Example Output
-
-```text
-TraceLLM Trace Report
-
-Trace ID:      243e7f8d-6bbc-4ff9-9bc2-63e3e02a29ba
-Prompt:        Explain transformers
-Latency:       0.0108s
-Token Count:   22
-Status:        SUCCESS
-```
-
----
-
-# System Architecture
-
-```text
-                ┌────────────────────┐
-                │  Developer App     │
-                └─────────┬──────────┘
-                          │
-                          ▼
-                ┌────────────────────┐
-                │   TraceLLM SDK     │
-                │  (Decorator Layer) │
-                └─────────┬──────────┘
-                          │
-          ┌───────────────┼────────────────┐
-          │               │                │
-          ▼               ▼                ▼
-  Capture Prompt   Measure Latency   Estimate Tokens
-          │               │                │
-          └───────────────┼────────────────┘
-                          ▼
-                ┌────────────────────┐
-                │ Trace Payload JSON │
-                └─────────┬──────────┘
-                          ▼
-                ┌────────────────────┐
-                │    MongoDB Atlas   │
-                └─────────┬──────────┘
-                          ▼
-                ┌────────────────────┐
-                │ Rich CLI Reporting │
-                └────────────────────┘
-```
-
----
-
-# Features
-
-| Feature | Status |
-|---|---|
-| Prompt Tracing | ✅ |
-| Response Logging | ✅ |
-| Latency Tracking | ✅ |
-| Token Estimation | ✅ |
-| MongoDB Storage | ✅ |
-| Rich CLI Reports | ✅ |
-| Trace IDs | ✅ |
-| Typer CLI Commands | ✅ |
-| FastAPI Backend | ✅ |
-| WebSocket Support | ✅ |
-| Agent Replay | 🚧 |
-| Tool Call Tracing | 🚧 |
-| Dashboard UI | 🚧 |
-| Hallucination Detection | 🚧 |
-| Multi-Agent Visualization | 🚧 |
-
----
-
-# Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Python |
-| Backend | FastAPI |
-| Database | MongoDB Atlas |
-| CLI | Typer |
-| Terminal UI | Rich |
-| Validation | Pydantic |
-| WebSockets | FastAPI WebSockets |
-| Deployment | Render / Railway |
-| Frontend (planned) | Next.js |
-| Realtime Streams | WebSockets |
-| Local Models | Ollama |
-
----
-
-# Folder Structure
-
-```text
-backend/
-│
-├── app/
-│   ├── database/
-│   ├── models/
-│   ├── routes/
-│   └── websocket/
-│
-├── sdk/
-│   ├── __init__.py
-│   └── tracer.py
-│
-├── .env
-├── main.py
-└── requirements.txt
+App-->>User: Final Answer
 ```
 
 ---
 
 # Installation
 
-## Clone Repository
+Install directly from PyPI.
 
 ```bash
-git clone https://github.com/yourusername/tracellm.git
+pip install tracellm-cli
+```
+
+Verify installation:
+
+```bash
+tracellm --help
+```
+
+Start TraceLLM:
+
+```bash
+tracellm start
 ```
 
 ---
 
-## Create Virtual Environment
+# MongoDB Setup
 
-### Windows
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
----
-
-## Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-# Environment Variables
-
-Create `.env`
+Create a `.env`
 
 ```env
-MONGO_URL=your_mongodb_url
+MONGO_URL=your_mongodb_connection_string
 DB_NAME=tracellm
 ```
 
----
-
-# Run Backend
+Run:
 
 ```bash
-uvicorn main:app --reload
+tracellm start
 ```
 
----
-
-# Run Demo
-
-```bash
-python -m sdk.tracer demo
-```
-
----
-
-# Trace Flow
+Expected output:
 
 ```text
-Function Call
-    ↓
-Trace Decorator
-    ↓
-Start Timer
-    ↓
-Execute LLM Function
-    ↓
-Capture Output
-    ↓
-Estimate Tokens
-    ↓
-Generate Trace Payload
-    ↓
-Store in MongoDB
-    ↓
-Render Rich CLI Report
+✓ MongoDB connected
+✓ API ready
+✓ WebSocket ready
 ```
 
 ---
 
-# MongoDB Trace Example
+# Quick Start
 
-```json
-{
-  "trace_id": "243e7f8d",
-  "prompt": "Explain transformers",
-  "response": "Transformers are neural networks...",
-  "latency": 0.0108,
-  "token_count": 22,
-  "timestamp": "2026-05-17T03:55:41"
-}
+## Basic Trace
+
+```python
+from tracellm import trace
+
+@trace
+def ask_llm():
+    return "Hello World"
+
+ask_llm()
 ```
 
 ---
 
-# Why TraceLLM Exists
+# OpenAI Example
 
-AI infrastructure tooling is still immature.
+```python
+from openai import OpenAI
+from tracellm.integrations.openai import trace_openai
 
-Most developers today debug LLM systems using:
-- print()
-- random logs
-- guesswork
+client = OpenAI()
 
-TraceLLM aims to provide:
-- structured tracing
-- execution observability
-- debugging visibility
-- realtime monitoring
+trace_openai(client)
 
-for modern AI-native systems.
-
----
-
-# Current Roadmap
-
-## Phase 1
-- SDK tracing
-- CLI reports
-- MongoDB persistence
-
-## Phase 2
-- realtime dashboards
-- websocket trace streaming
-- agent execution graphs
-
-## Phase 3
-- hallucination analysis
-- tool-call observability
-- distributed tracing
-- multi-agent replay system
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {
+            "role": "user",
+            "content": "Explain quantum computing"
+        }
+    ]
+)
+```
 
 ---
 
-# Future Vision
+# LangChain Example
+
+```python
+from tracellm.integrations.langchain import trace_langchain
+
+trace_langchain()
+
+# existing LangChain code continues normally
+```
+
+---
+
+# Replay Executions
+
+One of TraceLLM's most powerful features.
+
+Replay previous executions step-by-step.
 
 ```text
-TraceLLM = Datadog for AI Applications
+Prompt
+ ↓
+Tool Call
+ ↓
+Tool Result
+ ↓
+LLM Response
+ ↓
+Final Output
+```
+
+Perfect for:
+
+- Agent debugging
+- Failure analysis
+- Performance optimization
+- Prompt engineering
+
+---
+
+# Real-Time Monitoring
+
+```mermaid
+graph TD
+
+A[Agent]
+--> B[TraceLLM]
+
+B --> C[Live Dashboard]
+
+C --> D[Prompt Stream]
+
+C --> E[Tool Calls]
+
+C --> F[Latency Metrics]
+
+C --> G[Errors]
 ```
 
 ---
 
-# Screenshots
-
-## CLI Trace Report
-
-> Add screenshot here
+# Trace Lifecycle
 
 ```text
-assets/demo.png
+START TRACE
+    ↓
+Capture Prompt
+    ↓
+Capture Model Response
+    ↓
+Capture Tool Calls
+    ↓
+Calculate Latency
+    ↓
+Store Execution
+    ↓
+Stream Live Updates
+    ↓
+END TRACE
 ```
 
 ---
 
-# Planned Dashboard
+# Performance Metrics
+
+| Metric | Description |
+|----------|------------|
+| Prompt Count | Total prompts executed |
+| Token Usage | Input/output tokens |
+| Latency | Response time |
+| Error Rate | Failed executions |
+| Tool Usage | Tool invocation count |
+| Success Rate | Completed traces |
+
+---
+
+# Example Dashboard Insights
 
 ```text
-┌─────────────────────────────┐
-│  Active Agent Executions    │
-├─────────────────────────────┤
-│ Prompt Latency Graphs       │
-│ Token Usage Heatmaps        │
-│ Failure Rate Analytics      │
-│ Agent Replay Timeline       │
-└─────────────────────────────┘
+Total Traces       : 12,431
+Successful Traces  : 12,007
+Failed Traces      : 424
+
+Success Rate       : 96.58%
+
+Average Latency    : 1.4 sec
+
+Tool Calls         : 31,204
+
+Tokens Processed   : 8.7M
 ```
 
 ---
 
-# Example Use Cases
+# Tracey 🦖
 
-| Use Case | Description |
-|---|---|
-| AI Agents | Trace multi-step execution |
-| RAG Systems | Monitor retrieval latency |
-| Chatbots | Analyze token usage |
-| Research Systems | Observe inference behaviour |
-| Startups | Production AI debugging |
-| LLM APIs | Request analytics |
+Meet Tracey.
 
----
+The official TraceLLM dinosaur mascot.
 
-# Performance Goals
+Tracey helps users:
 
-| Metric | Goal |
-|---|---|
-| Trace overhead | <5ms |
-| Realtime updates | <1s |
-| Token estimation | O(n) |
-| Mongo insert speed | Fast async writes |
+- Setup MongoDB
+- Install TraceLLM
+- Create first traces
+- Troubleshoot issues
+- Understand observability concepts
+
+You'll find Tracey throughout the documentation helping guide you.
 
 ---
 
-# Inspiration
+# Roadmap
 
-Inspired by:
-- Datadog
-- Sentry
-- OpenTelemetry
-- LangSmith
-- Phoenix Arize
+## v0.3
+
+- [ ] Multi-project support
+- [ ] Better dashboards
+- [ ] Search traces
+- [ ] Export traces
+
+## v0.4
+
+- [ ] Team collaboration
+- [ ] Role management
+- [ ] Trace comparison
+
+## v0.5
+
+- [ ] OpenTelemetry support
+- [ ] Distributed tracing
+- [ ] Production deployment tooling
 
 ---
 
 # Contributing
 
+Contributions are welcome.
+
 ```bash
-fork → branch → commit → PR
+git clone https://github.com/YOUR_USERNAME/tracellm
+
+cd tracellm
+
+pip install -r requirements.txt
+
+python main.py
 ```
+
+Open a Pull Request.
+
+---
+
+# Community
+
+- GitHub Discussions
+- Issues
+- Feature Requests
+- Bug Reports
 
 ---
 
 # License
 
-MIT License
+MIT License.
 
 ---
 
-# Author
+# Star History
 
-Built by Avik Ghosh
+<p align="center">
 
-Building infrastructure tooling for AI systems.
+⭐ If TraceLLM helps you build better AI systems, consider starring the repository.
+
+</p>
+
+---
+
+# Final Goal
+
+TraceLLM aims to become the open-source observability layer for AI applications.
+
+Build agents.
+
+Trace everything.
+
+Debug faster.
+
+Ship confidently.
+
+🦖 Powered by Tracey.
