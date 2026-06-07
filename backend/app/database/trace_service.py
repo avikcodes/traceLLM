@@ -1,15 +1,15 @@
-import asyncio
 import logging
+import uuid
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from math import ceil
 from typing import Any, Optional
 
-from bson import ObjectId
 from fastapi import HTTPException
 from rich.console import Console
 
-from app.database.mongodb import get_database_connection
+from app.database import get_backend
+from app.database.utils import run_async
 from app.models.trace import StepSchema, TraceSchema
 from app.models.trace_model import (
     AnalyticsBreakdownItem,
@@ -44,7 +44,7 @@ def _coerce_datetime(value: Any) -> datetime:
 
 def _clean_document(document: dict[str, Any]) -> dict[str, Any]:
     cleaned = {key: value for key, value in document.items() if key != "_id"}
-    if isinstance(document.get("_id"), ObjectId):
+    if "_id" in document:
         cleaned["id"] = str(document["_id"])
     return cleaned
 
@@ -121,7 +121,7 @@ def normalize_trace_document(trace_data: dict[str, Any]) -> dict[str, Any]:
     response = trace_data.get("response")
 
     document = TraceSchema(
-        trace_id=str(trace_data.get("trace_id") or trace_data.get("id") or ObjectId()),
+        trace_id=str(trace_data.get("trace_id") or trace_data.get("id") or str(uuid.uuid4())),
         prompt=prompt,
         response=str(response) if response is not None else None,
         latency=latency,
@@ -137,7 +137,7 @@ def normalize_trace_document(trace_data: dict[str, Any]) -> dict[str, Any]:
             None if trace_data.get("api_key") is None else str(trace_data.get("api_key"))
         ),
         environment=str(trace_data.get("environment") or "development"),
-        status=status,  # type: ignore[arg-type]
+        status=status,
         steps=normalized_steps,
         retry_count=retry_count,
         slow_request=slow_request,
@@ -149,14 +149,9 @@ def normalize_trace_document(trace_data: dict[str, Any]) -> dict[str, Any]:
 
 
 async def ensure_trace_indexes() -> None:
-    db = await get_database_connection()
-    collection = db[COLLECTION_NAME]
-    await collection.create_index("trace_id")
-    await collection.create_index("created_at")
-    await collection.create_index("status")
-    await collection.create_index("model_name")
-    await collection.create_index("project_id")
-    await collection.create_index("environment")
+    backend = get_backend()
+    for field in ["trace_id", "created_at", "status", "model_name", "project_id", "environment"]:
+        await backend.create_index(COLLECTION_NAME, field)
 
 
 def _build_trace_query(filters: TraceFilters) -> dict[str, Any]:
@@ -196,7 +191,7 @@ def _serialize_traces(documents: list[dict[str, Any]]) -> list[TraceSchema]:
     for document in documents:
         cleaned = _clean_document(document)
         serialized = TraceSchema(
-            trace_id=str(cleaned.get("trace_id") or cleaned.get("id") or ObjectId()),
+            trace_id=str(cleaned.get("trace_id") or cleaned.get("id") or str(uuid.uuid4())),
             prompt=str(cleaned.get("prompt") or ""),
             response="" if cleaned.get("response") is None else str(cleaned.get("response")),
             latency=float(cleaned.get("latency", 0.0) or 0.0),
@@ -208,7 +203,7 @@ def _serialize_traces(documents: list[dict[str, Any]]) -> list[TraceSchema]:
             ),
             api_key=None if cleaned.get("api_key") is None else str(cleaned.get("api_key")),
             environment=str(cleaned.get("environment") or "development"),
-            status=_infer_status(cleaned, cleaned.get("steps", [])),  # type: ignore[arg-type]
+            status=_infer_status(cleaned, cleaned.get("steps", [])),
             steps=_normalize_steps(cleaned.get("steps", [])),
             retry_count=int(cleaned.get("retry_count", 0) or 0),
             slow_request=bool(cleaned.get("slow_request", False)),
@@ -226,14 +221,15 @@ def _serialize_traces(documents: list[dict[str, Any]]) -> list[TraceSchema]:
 
 
 async def save_trace(trace_data: dict[str, Any]) -> dict[str, Any] | None:
-    """Insert a trace payload into MongoDB and broadcast it to connected dashboards."""
+    """Insert a trace payload and broadcast it to connected dashboards."""
     try:
-        db = await get_database_connection()
-        collection = db[COLLECTION_NAME]
+        backend = get_backend()
+        if not backend.is_connected:
+            await backend.initialize()
         document = normalize_trace_document(trace_data)
-        await collection.insert_one(document)
+        await backend.insert_one(COLLECTION_NAME, document)
         console.print(
-            f"[bold green]Trace saved to MongoDB[/bold green] [dim]({COLLECTION_NAME})[/dim]"
+            f"[bold green]Trace saved[/bold green] [dim]({backend.storage_type}: {COLLECTION_NAME})[/dim]"
         )
 
         await manager.broadcast({"type": "trace.created", "trace": TraceSchema.model_validate(document).model_dump(mode="json")})
@@ -243,45 +239,24 @@ async def save_trace(trace_data: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
 
-def _handle_task_exception(task: asyncio.Task) -> None:
-    try:
-        task.result()
-    except Exception:
-        pass
-
-
 def save_trace_sync(trace_data: dict) -> None:
     """Save trace data safely from synchronous code."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is not None and loop.is_running():
-        task = loop.create_task(save_trace(trace_data))
-        task.add_done_callback(_handle_task_exception)
-    else:
-        try:
-            asyncio.run(save_trace(trace_data))
-        except Exception:
-            pass
+    run_async(save_trace(trace_data))
 
 
 async def list_traces(filters: TraceFilters) -> TraceListResponse:
-    db = await get_database_connection()
-    collection = db[COLLECTION_NAME]
+    backend = get_backend()
     query = _build_trace_query(filters)
-    total = await collection.count_documents(query)
-    documents = (
-        await collection.find(query).sort("created_at", -1).limit(filters.limit).to_list(filters.limit)
+    total = await backend.count_documents(COLLECTION_NAME, query)
+    documents = await backend.find_many(
+        COLLECTION_NAME, query, sort=[("created_at", -1)], limit=filters.limit
     )
     return TraceListResponse(total=total, items=_serialize_traces(documents))
 
 
 async def get_trace_by_id(trace_id: str) -> TraceSchema:
-    db = await get_database_connection()
-    collection = db[COLLECTION_NAME]
-    document = await collection.find_one({"trace_id": trace_id})
+    backend = get_backend()
+    document = await backend.find_one(COLLECTION_NAME, {"trace_id": trace_id})
     if not document:
         raise HTTPException(status_code=404, detail="Trace not found")
     return TraceSchema.model_validate(_clean_document(document))
@@ -296,10 +271,11 @@ def _calculate_percentile(values: list[float], percentile: float) -> float:
 
 
 async def get_analytics(filters: TraceFilters | None = None) -> AnalyticsResponse:
-    db = await get_database_connection()
-    collection = db[COLLECTION_NAME]
+    backend = get_backend()
     query = _build_trace_query(filters or TraceFilters())
-    documents = await collection.find(query).sort("created_at", 1).to_list(length=5000)
+    documents = await backend.find_many(
+        COLLECTION_NAME, query, sort=[("created_at", 1)], limit=5000
+    )
     traces = _serialize_traces(documents)
 
     if not traces:
@@ -395,10 +371,11 @@ async def get_analytics(filters: TraceFilters | None = None) -> AnalyticsRespons
 
 
 async def get_failures(limit: int = 25, filters: TraceFilters | None = None) -> FailureResponse:
-    db = await get_database_connection()
-    collection = db[COLLECTION_NAME]
+    backend = get_backend()
     query = _build_trace_query(filters or TraceFilters(limit=min(limit, 200)))
-    documents = await collection.find(query).sort("created_at", -1).to_list(length=1000)
+    documents = await backend.find_many(
+        COLLECTION_NAME, query, sort=[("created_at", -1)], limit=1000
+    )
     traces = _serialize_traces(documents)
 
     failed_traces = [trace for trace in traces if trace.status == "failed"][:limit]

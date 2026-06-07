@@ -1,94 +1,113 @@
 import os
-from typing import Optional
+from typing import Any
 
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from rich.console import Console
 
-console = Console()
+from app.database.base import StorageBackend
 
 load_dotenv()
 
-client: Optional[AsyncIOMotorClient] = None
-database: Optional[AsyncIOMotorDatabase] = None
-database_name: Optional[str] = None
+console = Console()
 
 
-async def connect_to_mongo(
-    mongo_url: Optional[str] = None, db_name: Optional[str] = None
-) -> AsyncIOMotorDatabase:
-    """
-    Create the MongoDB client if it is not already connected.
-    This supports both FastAPI startup and direct SDK usage.
-    """
-    global client, database, database_name
-
-    if database is not None:
-        return database
-
-    mongo_url = mongo_url or os.getenv("MONGO_URL")
-    db_name = db_name or os.getenv("DB_NAME")
-
-    if not mongo_url:
-        raise ValueError("MONGO_URL is not set in the environment.")
-
-    if not db_name:
-        raise ValueError("DB_NAME is not set in the environment.")
-
-    try:
-        client = AsyncIOMotorClient(mongo_url)
-        database = client[db_name]
-        database_name = db_name
-
-        # Ping MongoDB once so we can fail early if the connection is invalid.
-        await client.admin.command("ping")
-
-        console.print(
-            f"[bold green]MongoDB connected[/bold green] [dim](database: {db_name})[/dim]"
-        )
-        return database
-    except Exception:
-        client = None
-        database = None
-        database_name = None
-        console.print("[bold red]MongoDB connection failed[/bold red]")
-        raise
+def _clean_document(document: dict) -> dict:
+    cleaned = {key: value for key, value in document.items() if key != "_id"}
+    if "_id" in document:
+        cleaned["id"] = str(document["_id"])
+    return cleaned
 
 
-def get_database() -> AsyncIOMotorDatabase:
-    """
-    Return the active database instance.
-    Use this after the connection has already been initialized.
-    """
-    if database is None:
-        raise RuntimeError("MongoDB is not connected yet.")
+class MongoBackend(StorageBackend):
+    def __init__(
+        self, mongo_url: str | None = None, db_name: str | None = None
+    ) -> None:
+        self._mongo_url = mongo_url or os.getenv("MONGO_URL")
+        self._db_name = db_name or os.getenv("DB_NAME", "tracellm")
+        self._client: AsyncIOMotorClient | None = None
+        self._database: AsyncIOMotorDatabase | None = None
+        self._connected = False
 
-    return database
-
-
-async def get_database_connection() -> AsyncIOMotorDatabase:
-    """
-    Ensure MongoDB is connected before returning the database.
-    """
-    if database is None:
-        return await connect_to_mongo()
-
-    return database
-
-
-async def close_mongo_connection() -> None:
-    """
-    Close the MongoDB client when the FastAPI app shuts down.
-    """
-    global client, database, database_name
-
-    try:
-        if client is not None:
-            client.close()
+    async def initialize(self) -> None:
+        if self._connected:
+            return
+        if not self._mongo_url:
+            raise ValueError("MONGO_URL is not set in the environment.")
+        try:
+            self._client = AsyncIOMotorClient(self._mongo_url)
+            self._database = self._client[self._db_name]
+            await self._client.admin.command("ping")
+            self._connected = True
             console.print(
-                f"[bold yellow]MongoDB connection closed[/bold yellow] [dim](database: {database_name})[/dim]"
+                f"[bold green]MongoDB connected[/bold green] [dim](database: {self._db_name})[/dim]"
             )
-    finally:
-        client = None
-        database = None
-        database_name = None
+        except Exception:
+            self._client = None
+            self._database = None
+            self._connected = False
+            console.print("[bold red]MongoDB connection failed[/bold red]")
+            raise
+
+    async def close(self) -> None:
+        self._connected = False
+        try:
+            if self._client is not None:
+                self._client.close()
+                console.print(
+                    f"[bold yellow]MongoDB connection closed[/bold yellow] [dim](database: {self._db_name})[/dim]"
+                )
+        finally:
+            self._client = None
+            self._database = None
+
+    async def insert_one(self, collection: str, document: dict) -> None:
+        assert self._database is not None
+        await self._database[collection].insert_one(document)
+
+    async def find_one(self, collection: str, filter: dict) -> dict | None:
+        assert self._database is not None
+        doc = await self._database[collection].find_one(filter)
+        if doc is None:
+            return None
+        return _clean_document(doc)
+
+    async def find_many(
+        self,
+        collection: str,
+        filter: dict | None = None,
+        sort: list | None = None,
+        limit: int | None = None,
+    ) -> list[dict]:
+        assert self._database is not None
+        cursor = self._database[collection].find(filter or {})
+        if sort:
+            cursor = cursor.sort(*sort[0]) if len(sort) == 1 else cursor.sort(sort)
+        if limit is not None:
+            cursor = cursor.limit(limit)
+        docs = await cursor.to_list(length=limit or 10000)
+        return [_clean_document(doc) for doc in docs]
+
+    async def count_documents(
+        self, collection: str, filter: dict | None = None
+    ) -> int:
+        assert self._database is not None
+        return await self._database[collection].count_documents(filter or {})
+
+    async def create_index(
+        self, collection: str, key_or_list: str | list, unique: bool = False
+    ) -> None:
+        assert self._database is not None
+        await self._database[collection].create_index(key_or_list, unique=unique)
+
+    @property
+    def is_connected(self) -> bool:
+        return self._connected
+
+    @property
+    def storage_type(self) -> str:
+        return "mongodb"
+
+    @property
+    def storage_detail(self) -> str:
+        return f"{self._db_name} ({self._mongo_url})"

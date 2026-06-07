@@ -62,11 +62,11 @@ def trace_command(
 
 @app.command()
 def replay(
-    trace_id: str = typer.Argument(..., help="Trace ID to replay from MongoDB."),
+    trace_id: str = typer.Argument(..., help="Trace ID to replay."),
     speed: float = typer.Option(1.0, "--speed", min=0.1, help="Replay speed multiplier."),
     show_response: bool = typer.Option(False, "--show-response", help="Show the full saved response after replay."),
 ) -> None:
-    """Replay a saved trace from MongoDB in the terminal."""
+    """Replay a saved trace in the terminal."""
     replay_trace(trace_id=trace_id, speed=speed, show_response=show_response)
 
 
@@ -90,7 +90,7 @@ def export(
     format: str = typer.Option("json", "--format", help="Export format: json or csv."),
     limit: int = typer.Option(100, "--limit", min=1, max=1000, help="How many recent traces to export."),
 ) -> None:
-    """Export traces from MongoDB."""
+    """Export traces from storage."""
     normalized = format.lower()
     if normalized not in {"json", "csv"}:
         raise typer.BadParameter("format must be one of: json, csv")

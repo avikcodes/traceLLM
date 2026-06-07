@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 
 import { ConsoleLayout } from "@/components/layout/console-layout";
 import { ObservabilityProvider } from "@/components/providers/observability-provider";
+import { ThemeProvider } from "@/contexts/theme-context";
 import "./globals.css";
 
 const inter = Inter({
@@ -28,11 +29,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("tracellm-theme");if(t){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full bg-background text-foreground font-sans">
-        <ObservabilityProvider>
-          <ConsoleLayout>{children}</ConsoleLayout>
-        </ObservabilityProvider>
+        <ThemeProvider>
+          <ObservabilityProvider>
+            <ConsoleLayout>{children}</ConsoleLayout>
+          </ObservabilityProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

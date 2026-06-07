@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useObservabilityStream } from "@/components/providers/observability-provider";
+import { ThemeSelector } from "@/components/theme/theme-selector";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -48,14 +49,17 @@ export function ConsoleHeader() {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-muted">
-          <span
-            className={cn(
-              "inline-block w-2 h-2 rounded-full",
-              connectionState === "open" ? "bg-accent" : "bg-muted"
-            )}
-          />
-          <span>{connectionState === "open" ? "Connected" : "Disconnected"}</span>
+        <div className="flex items-center gap-2">
+          <ThemeSelector />
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <span
+              className={cn(
+                "inline-block w-2 h-2 rounded-full",
+                connectionState === "open" ? "bg-accent" : "bg-muted"
+              )}
+            />
+            <span>{connectionState === "open" ? "Connected" : "Disconnected"}</span>
+          </div>
         </div>
       </div>
     </header>

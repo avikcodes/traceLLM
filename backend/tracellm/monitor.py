@@ -1,8 +1,8 @@
 """Live monitor dashboard — htop for AI systems.
 
 Connects to the backend WebSocket for real-time trace events, falls back to
-polling MongoDB when the server is unavailable, and reconnects automatically
-on disconnect.
+polling the storage backend when the server is unavailable, and reconnects
+automatically on disconnect.
 """
 
 from __future__ import annotations
@@ -242,7 +242,7 @@ def run_monitor(
     """Run the live monitor dashboard.
 
     Connects to the TraceLLM backend WebSocket for real-time trace events.
-    Falls back to polling MongoDB when the server is unavailable.
+    Falls back to polling the storage backend when the server is unavailable.
     Reconnects automatically on disconnect.
 
     When WebSocket is connected, polling is suspended and only live events
@@ -296,7 +296,7 @@ def run_monitor(
                         elif evt_type == "ws_error":
                             if not has_ever_connected:
                                 ws_status = "[yellow]\u25cf Unavailable[/yellow]"
-                                ws_detail = "polling MongoDB"
+                                ws_detail = "polling storage"
                             else:
                                 ws_status = "[yellow]\u25cf Error[/yellow]"
                                 ws_detail = str(evt_data)[:40]
@@ -315,7 +315,7 @@ def run_monitor(
                     except queue.Empty:
                         break
 
-                # Decide whether to poll MongoDB or use live data
+                # Decide whether to poll storage or use live data
                 if needs_initial_fetch or not ws_connected:
                     try:
                         db_traces = fetch_recent_traces(limit=limit)

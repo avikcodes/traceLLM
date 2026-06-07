@@ -12,7 +12,7 @@ TraceStatus = Literal["success", "warning", "failed"]
 
 
 class MongoFriendlyModel(BaseModel):
-    """Base settings shared by MongoDB-backed models."""
+    """Base settings shared by storage-backed models."""
 
     model_config = ConfigDict(
         populate_by_name=True,

@@ -28,7 +28,7 @@ export function TraceStream({ compact = false }: { compact?: boolean }) {
   return (
     <div className={cn(
       "flex flex-col h-full rounded-lg overflow-hidden",
-      "bg-[#050505] border border-border"
+      "bg-surface-alt border border-border"
     )}>
       <div
         ref={scrollRef}

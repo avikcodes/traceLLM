@@ -1,10 +1,8 @@
-import os
-
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database.mongodb import close_mongo_connection, connect_to_mongo
+from app.database import get_backend
 from app.database.project_service import ensure_project_indexes
 from app.database.trace_service import ensure_trace_indexes
 from app.routes.health import router as health_router
@@ -32,13 +30,13 @@ app.include_router(websocket_router)
 
 @app.on_event("startup")
 async def startup_event() -> None:
-    mongo_url = os.getenv("MONGO_URL")
-    db_name = os.getenv("DB_NAME")
-    await connect_to_mongo(mongo_url=mongo_url, db_name=db_name)
+    backend = get_backend()
+    await backend.initialize()
     await ensure_trace_indexes()
     await ensure_project_indexes()
 
 
 @app.on_event("shutdown")
 async def shutdown_event() -> None:
-    await close_mongo_connection()
+    backend = get_backend()
+    await backend.close()

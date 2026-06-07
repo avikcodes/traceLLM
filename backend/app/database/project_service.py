@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from rich.console import Console
 
-from app.database.mongodb import get_database_connection
+from app.database import get_backend
 from app.models.project import ApiKeySchema, ProjectCreateResponse, ProjectSchema
 
 console = Console()
@@ -31,20 +31,20 @@ def generate_api_key() -> str:
 
 
 async def ensure_project_indexes() -> None:
-    db = await get_database_connection()
-    await db[PROJECTS_COLLECTION].create_index("project_id", unique=True)
-    await db[PROJECTS_COLLECTION].create_index("name", unique=True)
-    await db[API_KEYS_COLLECTION].create_index("key", unique=True)
-    await db[API_KEYS_COLLECTION].create_index("project_id")
-    await db[API_KEYS_COLLECTION].create_index("environment")
+    backend = get_backend()
+    await backend.create_index(PROJECTS_COLLECTION, "project_id", unique=True)
+    await backend.create_index(PROJECTS_COLLECTION, "name", unique=True)
+    await backend.create_index(API_KEYS_COLLECTION, "key", unique=True)
+    await backend.create_index(API_KEYS_COLLECTION, "project_id")
+    await backend.create_index(API_KEYS_COLLECTION, "environment")
 
 
 async def create_project(name: str, description: str, environment: str) -> ProjectCreateResponse:
-    db = await get_database_connection()
+    backend = get_backend()
     project_id = _project_id(name)
 
-    existing = await db[PROJECTS_COLLECTION].find_one(
-        {"$or": [{"project_id": project_id}, {"name": name}]}
+    existing = await backend.find_one(
+        PROJECTS_COLLECTION, {"$or": [{"project_id": project_id}, {"name": name}]}
     )
     if existing:
         raise HTTPException(status_code=409, detail="Project already exists")
@@ -62,8 +62,8 @@ async def create_project(name: str, description: str, environment: str) -> Proje
         created_at=_utc_now(),
     )
 
-    await db[PROJECTS_COLLECTION].insert_one(project.model_dump(mode="python"))
-    await db[API_KEYS_COLLECTION].insert_one(api_key.model_dump(mode="python"))
+    await backend.insert_one(PROJECTS_COLLECTION, project.model_dump(mode="python"))
+    await backend.insert_one(API_KEYS_COLLECTION, api_key.model_dump(mode="python"))
     console.print(
         f"[bold green]Project created[/bold green] [dim]({project.project_id}, {environment})[/dim]"
     )
@@ -71,27 +71,25 @@ async def create_project(name: str, description: str, environment: str) -> Proje
 
 
 async def list_projects() -> list[ProjectSchema]:
-    db = await get_database_connection()
-    documents = await db[PROJECTS_COLLECTION].find({}).sort("created_at", 1).to_list(length=500)
-    return [
-        ProjectSchema.model_validate({key: value for key, value in document.items() if key != "_id"})
-        for document in documents
-    ]
+    backend = get_backend()
+    documents = await backend.find_many(
+        PROJECTS_COLLECTION, sort=[("created_at", 1)], limit=500
+    )
+    return [ProjectSchema.model_validate(doc) for doc in documents]
 
 
 async def list_api_keys(project_id: str | None = None) -> list[ApiKeySchema]:
-    db = await get_database_connection()
+    backend = get_backend()
     query = {"project_id": project_id} if project_id else {}
-    documents = await db[API_KEYS_COLLECTION].find(query).sort("created_at", -1).to_list(length=500)
-    return [
-        ApiKeySchema.model_validate({key: value for key, value in document.items() if key != "_id"})
-        for document in documents
-    ]
+    documents = await backend.find_many(
+        API_KEYS_COLLECTION, filter=query, sort=[("created_at", -1)], limit=500
+    )
+    return [ApiKeySchema.model_validate(doc) for doc in documents]
 
 
 async def get_project_by_api_key(api_key: str) -> ApiKeySchema:
-    db = await get_database_connection()
-    document = await db[API_KEYS_COLLECTION].find_one({"key": api_key})
+    backend = get_backend()
+    document = await backend.find_one(API_KEYS_COLLECTION, {"key": api_key})
     if not document:
         raise HTTPException(status_code=404, detail="API key not found")
-    return ApiKeySchema.model_validate({key: value for key, value in document.items() if key != "_id"})
+    return ApiKeySchema.model_validate(document)

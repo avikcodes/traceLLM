@@ -16,7 +16,7 @@ from tracellm.mascot import render, MascotState
 
 _OPTIONS: list[tuple[str, str, str]] = [
     ("\U0001f996  Trace Request", "trace", "Run a traced prompt simulation"),
-    ("\u21bb  Replay Trace", "replay", "Replay a saved trace from MongoDB"),
+    ("\u21bb  Replay Trace", "replay", "Replay a saved trace"),
     ("\u21e7  Export Traces", "export", "Export traces to JSON or CSV"),
     ("\u25cb  Monitor Live", "monitor", "Watch incoming traces in realtime"),
     ("\u25b6  Start Stack", "start", "Start backend + dashboard"),

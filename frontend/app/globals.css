@@ -4,22 +4,62 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: #000000;
-  --color-foreground: #ededed;
-  --color-surface: #0a0a0a;
-  --color-surface-hover: #141414;
-  --color-surface-alt: #111111;
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-muted: #6b7280;
-  --color-accent: #a78bfa;
-  --color-accent-hover: #c4b5fd;
-  --color-accent-subtle: rgba(167, 139, 250, 0.1);
-  --color-success: #4ade80;
-  --color-warning: #fbbf24;
-  --color-error: #f87171;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-scrollbar-thumb: var(--scrollbar-thumb);
+  --color-scrollbar-thumb-hover: var(--scrollbar-thumb-hover);
+
   --font-sans: var(--font-inter), "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: var(--font-jetbrains-mono), "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
 }
+
+:root {
+  --background: #000000;
+  --foreground: #ededed;
+  --surface: #0a0a0a;
+  --surface-hover: #141414;
+  --surface-alt: #111111;
+  --border: rgba(255, 255, 255, 0.06);
+  --muted: #6b7280;
+  --accent: #a78bfa;
+  --accent-hover: #c4b5fd;
+  --accent-subtle: rgba(167, 139, 250, 0.1);
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --scrollbar-thumb: #1a1a1a;
+  --scrollbar-thumb-hover: #2a2a2a;
+}
+
+[data-theme="light"] {
+  --background: #ffffff;
+  --foreground: #111111;
+  --surface: #f9fafb;
+  --surface-hover: #f3f4f6;
+  --surface-alt: #f0f0f0;
+  --border: rgba(0, 0, 0, 0.08);
+  --muted: #6b7280;
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-subtle: rgba(124, 58, 237, 0.08);
+  --success: #16a34a;
+  --warning: #d97706;
+  --error: #dc2626;
+  --scrollbar-thumb: #d1d5db;
+  --scrollbar-thumb-hover: #9ca3af;
+}
+
 
 @layer base {
   * {
@@ -37,8 +77,8 @@
   }
 
   ::selection {
-    background: rgba(167, 139, 250, 0.2);
-    color: #ededed;
+    background: var(--accent-subtle);
+    color: var(--foreground);
   }
 
   ::-webkit-scrollbar {
@@ -51,12 +91,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #1a1a1a;
+    background: var(--scrollbar-thumb);
     border-radius: 999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #2a2a2a;
+    background: var(--scrollbar-thumb-hover);
   }
 
   code, pre, kbd, samp {

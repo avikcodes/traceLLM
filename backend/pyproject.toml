@@ -12,6 +12,7 @@ dependencies = [
     "fastapi",
     "typer",
     "rich",
+    "aiosqlite",
     "motor",
     "pymongo",
     "python-dotenv",

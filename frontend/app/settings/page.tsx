@@ -11,7 +11,7 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="flex flex-col h-full p-4 gap-4 max-w-2xl">
+    <div className="flex flex-col h-full p-4 gap-4 max-w-2xl overflow-y-auto">
       <h1 className="text-sm font-semibold text-foreground">Settings</h1>
 
       <div className="card">
