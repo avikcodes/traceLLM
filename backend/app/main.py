@@ -1,6 +1,10 @@
+from pathlib import Path
+
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.database import get_backend
 from app.database.project_service import ensure_project_indexes
@@ -22,10 +26,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health_router)
-app.include_router(observability_router)
-app.include_router(projects_router)
+app.include_router(health_router, prefix="/api")
+app.include_router(observability_router, prefix="/api")
+app.include_router(projects_router, prefix="/api")
 app.include_router(websocket_router)
+
+DASHBOARD_DIR = Path(__file__).resolve().parent / "dashboard"
+_next_dir = DASHBOARD_DIR / "_next"
+
+if DASHBOARD_DIR.is_dir() and _next_dir.is_dir():
+    app.mount("/_next", StaticFiles(directory=str(_next_dir)), name="next-assets")
 
 
 @app.on_event("startup")
@@ -40,3 +50,20 @@ async def startup_event() -> None:
 async def shutdown_event() -> None:
     backend = get_backend()
     await backend.close()
+
+
+@app.middleware("http")
+async def _serve_dashboard(request: Request, call_next):
+    response = await call_next(request)
+    if response.status_code == 404 and DASHBOARD_DIR.is_dir():
+        path = request.url.path
+        if not path.startswith("/api/") and not path.startswith("/_next/") and path != "/ws":
+            file_path = DASHBOARD_DIR / path.lstrip("/")
+            if file_path.is_file():
+                return FileResponse(file_path)
+            if file_path.is_dir() and (file_path / "index.html").is_file():
+                return FileResponse(file_path / "index.html", media_type="text/html")
+            index = DASHBOARD_DIR / "index.html"
+            if index.is_file():
+                return FileResponse(index, media_type="text/html")
+    return response

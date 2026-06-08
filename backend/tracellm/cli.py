@@ -34,11 +34,11 @@ def demo() -> None:
 @app.command()
 def start(
     port: int = typer.Option(8000, "--port", "-p", help="Port for the API server."),
-    dashboard: bool = typer.Option(False, "--dashboard", "-d", help="Open the dashboard in your browser."),
     dashboard_port: int = typer.Option(3000, "--dashboard-port", help="Port for the frontend dashboard."),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Start the stack without opening the browser."),
 ) -> None:
     """Start the TraceLLM observability stack (backend + dashboard)."""
-    run_start(port=port, dashboard_port=dashboard_port, launch_dashboard=dashboard)
+    run_start(port=port, dashboard_port=dashboard_port, no_browser=no_browser)
 
 
 @app.command("trace")

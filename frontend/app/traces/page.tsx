@@ -1,14 +1,92 @@
 "use client";
 
-import Link from "next/link";
 import { useDeferredValue, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
-import { useRealtimeTraces } from "@/hooks/use-observability-data";
-import { formatDuration, formatTimestamp } from "@/lib/format";
+import { useRealtimeTrace, useRealtimeTraces } from "@/hooks/use-observability-data";
+import { StepTimeline } from "@/components/console/step-timeline";
+import { TraceInspector } from "@/components/console/trace-inspector";
+import { formatDuration, formatFullTimestamp, formatTimestamp } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { TraceRecord, TraceStep } from "@/lib/types";
+
+function TraceDetail({ trace }: { trace: TraceRecord }) {
+  const { trace: liveTrace } = useRealtimeTrace(trace.trace_id);
+  const current = liveTrace ?? trace;
+  const [selectedStep, setSelectedStep] = useState<TraceStep | null>(null);
+  const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
+
+  return (
+    <div className="flex flex-col h-full p-4">
+      {/* Summary bar */}
+      <div className="card px-4 py-3 mb-4 flex items-center gap-6 text-sm">
+        <span className="text-muted">Trace</span>
+        <span className="font-mono text-foreground text-xs">{current.trace_id}</span>
+        <span className="text-muted/30">|</span>
+        <span className="text-muted">Model</span>
+        <span className="text-foreground font-medium">{current.model_name ?? "—"}</span>
+        <span className="text-muted/30">|</span>
+        <span className="text-muted">Latency</span>
+        <span className="text-foreground font-medium">{formatDuration(current.latency)}</span>
+        <span className="text-muted/30">|</span>
+        <span className="text-muted">Tokens</span>
+        <span className="text-foreground font-medium">{current.token_count.toLocaleString()}</span>
+        <span className="text-muted/30">|</span>
+        <span className="text-muted">Retries</span>
+        <span className="text-foreground font-medium">{current.retry_count}</span>
+        <span className="text-muted/30">|</span>
+        <span className="text-muted">Steps</span>
+        <span className="text-foreground font-medium">{current.steps.length}</span>
+        <span className="text-muted/30">|</span>
+        <span className="text-muted">At</span>
+        <span className="text-foreground">{formatFullTimestamp(current.created_at)}</span>
+      </div>
+
+      {/* Two-panel content */}
+      <div className="flex-1 flex gap-4 min-h-0">
+        <div className="flex-1 flex flex-col gap-4 min-w-0">
+          <div className="card flex-1 overflow-y-auto">
+            <StepTimeline
+              steps={current.steps}
+              activeStep={activeStepIndex}
+              onStepSelect={(step, index) => {
+                setSelectedStep(step);
+                setActiveStepIndex(index);
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="card">
+              <div className="px-4 py-3 border-b border-border">
+                <span className="text-xs font-medium text-muted uppercase tracking-wider">Prompt</span>
+              </div>
+              <pre className="p-4 text-sm text-foreground/70 whitespace-pre-wrap overflow-y-auto max-h-40 font-sans leading-relaxed">
+                {current.prompt || "∅"}
+              </pre>
+            </div>
+            <div className="card">
+              <div className="px-4 py-3 border-b border-border">
+                <span className="text-xs font-medium text-muted uppercase tracking-wider">Response</span>
+              </div>
+              <pre className="p-4 text-sm text-foreground/70 whitespace-pre-wrap overflow-y-auto max-h-40 font-sans leading-relaxed">
+                {current.response ? current.response.slice(0, 1000) + (current.response.length > 1000 ? "\n…" : "") : "∅"}
+              </pre>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-[380px] flex-shrink-0">
+          <TraceInspector trace={current} selectedStep={selectedStep} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function TracesPage() {
   const [search, setSearch] = useState("");
+  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const { items, loading } = useRealtimeTraces({ limit: 100 });
   const deferredSearch = useDeferredValue(search);
 
@@ -20,6 +98,25 @@ export default function TracesPage() {
           (t.model_name ?? "").toLowerCase().includes(deferredSearch.toLowerCase())
       )
     : items;
+
+  const selectedTrace = selectedTraceId ? items.find((t) => t.trace_id === selectedTraceId) ?? null : null;
+
+  if (selectedTrace) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center gap-2 px-4 pt-4">
+          <button
+            onClick={() => setSelectedTraceId(null)}
+            className="flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            Back to Traces
+          </button>
+        </div>
+        <TraceDetail trace={selectedTrace} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -61,7 +158,8 @@ export default function TracesPage() {
                 {filtered.map((trace) => (
                   <tr
                     key={trace.trace_id}
-                    className="border-b border-border/50 hover:bg-surface-hover transition-colors"
+                    className="border-b border-border/50 hover:bg-surface-hover transition-colors cursor-pointer"
+                    onClick={() => setSelectedTraceId(trace.trace_id)}
                   >
                     <td className="px-4 py-3">
                       <span className={cn(
@@ -96,13 +194,8 @@ export default function TracesPage() {
                     <td className="px-4 py-3 text-muted whitespace-nowrap">
                       {formatTimestamp(trace.created_at)}
                     </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/traces/${trace.trace_id}`}
-                        className="text-sm text-muted hover:text-accent transition-colors no-underline font-medium"
-                      >
-                        View →
-                      </Link>
+                    <td className="px-4 py-3 text-sm text-muted">
+                      View →
                     </td>
                   </tr>
                 ))}

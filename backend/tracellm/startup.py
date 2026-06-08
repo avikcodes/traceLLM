@@ -38,7 +38,7 @@ def _health_check(port: int, timeout: int = 30) -> tuple[bool, str, str]:
     with console.status("[bold white]Waiting for API server...[/bold white]"):
         while time.time() - start < timeout:
             try:
-                response = httpx.get(f"http://127.0.0.1:{port}/", timeout=3)
+                response = httpx.get(f"http://127.0.0.1:{port}/api/", timeout=3)
                 body = response.json()
                 if response.status_code == 200:
                     storage_type = body.get("storage_type", "sqlite")
@@ -51,7 +51,14 @@ def _health_check(port: int, timeout: int = 30) -> tuple[bool, str, str]:
     return (False, "", "")
 
 
-def _render_status(storage_type: str, storage_detail: str, api_ok: bool, port: int, dashboard_port: int, launch_dashboard: bool) -> None:
+def _open_browser(url: str) -> None:
+    """Open the default browser (cross-platform)."""
+    import webbrowser
+
+    webbrowser.open(url)
+
+
+def _render_status(storage_type: str, storage_detail: str, api_ok: bool, port: int) -> None:
     table = Table.grid(padding=(0, 2))
     table.add_column()
     table.add_column()
@@ -71,12 +78,12 @@ def _render_status(storage_type: str, storage_detail: str, api_ok: bool, port: i
             f"[green]●[/green] MongoDB [dim]({storage_detail})[/dim]",
         )
     table.add_row(
-        "Dashboard",
-        f"[green]● http://localhost:{dashboard_port}[/green]" if launch_dashboard else "[dim]● Not launched[/dim]",
-    )
-    table.add_row(
         "WebSocket",
         f"[dim]ws://127.0.0.1:{port}/ws[/dim]",
+    )
+    table.add_row(
+        "Dashboard",
+        f"[green]●[/green] http://127.0.0.1:{port}" if api_ok else "[red]●[/red] Unavailable",
     )
 
     console.print()
@@ -86,7 +93,7 @@ def _render_status(storage_type: str, storage_detail: str, api_ok: bool, port: i
     console.print()
 
 
-def run_start(port: int = 8000, dashboard_port: int = 3000, launch_dashboard: bool = False) -> None:
+def run_start(port: int = 8000, dashboard_port: int = 3000, no_browser: bool = False) -> None:
     console.print()
     console.print(render_banner())
     console.print()
@@ -97,22 +104,23 @@ def run_start(port: int = 8000, dashboard_port: int = 3000, launch_dashboard: bo
     api_ok, storage_type, storage_detail = _health_check(port)
 
     if api_ok:
-        console.print(f"  [green]✓[/green] API ready")
         if storage_type == "sqlite":
             console.print(f"  [green]✓[/green] SQLite initialized")
         else:
             console.print(f"  [green]✓[/green] MongoDB connected")
+        console.print(f"  [green]✓[/green] API ready")
         console.print(f"  [green]✓[/green] WebSocket ready")
+        console.print(f"  [green]✓[/green] Dashboard ready")
+
+        if not no_browser:
+            console.print(f"  [green]✓[/green] Opening browser...")
+            _open_browser(f"http://127.0.0.1:{port}")
     else:
         console.print(f"  [red]✗[/red] API failed")
         console.print(f"  [red]✗[/red] Storage unavailable")
         console.print(f"  [red]✗[/red] WebSocket unavailable")
 
-    if launch_dashboard and api_ok:
-        import webbrowser
-        webbrowser.open(f"http://localhost:{dashboard_port}")
-
-    _render_status(storage_type, storage_detail, api_ok, port, dashboard_port, launch_dashboard)
+    _render_status(storage_type, storage_detail, api_ok, port)
 
     try:
         api_process.wait()

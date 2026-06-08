@@ -35,3 +35,6 @@ packages = [
     "app.routes",
     "app.websocket",
 ]
+
+[tool.setuptools.package-data]
+app = ["dashboard/**"]
