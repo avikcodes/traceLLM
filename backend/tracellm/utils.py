@@ -15,6 +15,20 @@ from rich.table import Table
 from rich.text import Text
 from rich.tree import Tree
 
+from tracellm.themes import (
+    accent,
+    cross,
+    current_theme,
+    error,
+    get_border_style,
+    info,
+    primary,
+    secondary,
+    success,
+    tick,
+    warning,
+)
+
 console = Console()
 SLOW_TRACE_THRESHOLD_MS = 1500.0
 WARNING_TRACE_THRESHOLD_MS = 900.0
@@ -116,27 +130,27 @@ def coerce_failure_reason(result: Any) -> str | None:
 def status_style(status: str) -> str:
     normalized = status.lower()
     if normalized == "success":
-        return "bold green"
+        return current_theme().success
     if normalized == "warning":
-        return "bold yellow"
-    return "bold red"
+        return current_theme().warning
+    return current_theme().error
 
 
 def environment_style(environment: str) -> str:
     normalized = environment.lower()
     if normalized == "production":
-        return "bold red"
+        return current_theme().error
     if normalized == "staging":
-        return "bold yellow"
-    return "bold cyan"
+        return current_theme().warning
+    return current_theme().info
 
 
 def latency_style(latency_ms: float) -> str:
     if latency_ms >= SLOW_TRACE_THRESHOLD_MS:
-        return "bold red"
+        return current_theme().error
     if latency_ms >= WARNING_TRACE_THRESHOLD_MS:
-        return "bold yellow"
-    return "green"
+        return current_theme().warning
+    return current_theme().success
 
 
 def ensure_export_dir() -> Path:
@@ -159,16 +173,31 @@ def write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str]) -> 
 def render_status_badge(status: str) -> Text:
     normalized = status.lower()
     if normalized == "success":
-        return Text(" SUCCESS ", style="bold white on #1a6b3c")
+        return Text(" SUCCESS ", style=f"bold white on {_hex_bg(current_theme().success)}")
     if normalized == "warning":
-        return Text(" WARNING ", style="bold #1a1a1a on #b8860b")
+        return Text(" WARNING ", style=f"bold on {_hex_bg(current_theme().warning)}")
     return Text(" FAILED ", style="bold white on #8b1a1a")
+
+
+def _hex_bg(style: str) -> str:
+    parts = style.replace("bold ", "").split()
+    for p in parts:
+        if p.startswith("#"):
+            return p
+    if style == "green":
+        return "#1a6b3c"
+    if style == "yellow" or style.startswith("#b8860b"):
+        return "#b8860b"
+    if style == "red":
+        return "#8b1a1a"
+    return "#1a6b3c"
 
 
 def build_trace_summary_table(trace_data: dict[str, Any]) -> Table:
     table = Table.grid(padding=(0, 3), collapse_padding=True)
-    table.add_column(style="bright_black", no_wrap=True)
-    table.add_column(style="white")
+    theme = current_theme()
+    table.add_column(style=theme.secondary, no_wrap=True)
+    table.add_column(style=theme.primary)
     table.add_row("Trace ID", str(trace_data["trace_id"]))
     table.add_row("Prompt", str(trace_data["prompt"])[:80])
     table.add_row("Model", str(trace_data["model_name"]))
@@ -188,17 +217,18 @@ def build_trace_summary_table(trace_data: dict[str, Any]) -> Table:
 
 
 def build_steps_table(steps: list[dict[str, Any]]) -> Table:
+    theme = current_theme()
     table = Table(title="  Steps", box=None, padding=(0, 2), header_style="dim")
-    table.add_column("#", style="bright_black", width=3)
-    table.add_column("Tool", style="white")
-    table.add_column("Duration", justify="right", style="bright_black")
+    table.add_column("#", style=theme.secondary, width=3)
+    table.add_column("Tool", style=theme.primary)
+    table.add_column("Duration", justify="right", style=theme.secondary)
     table.add_column("Status", justify="center")
     table.add_column("Detail", style="dim")
     for index, step in enumerate(steps, start=1):
-        success = bool(step.get("success", True))
+        success_flag = bool(step.get("success", True))
         duration = float(step.get("duration", 0.0))
         detail = ""
-        if not success:
+        if not success_flag:
             detail = "retry"
         elif duration >= SLOW_TRACE_THRESHOLD_MS:
             detail = "spike"
@@ -206,7 +236,7 @@ def build_steps_table(steps: list[dict[str, Any]]) -> Table:
             str(index),
             str(step.get("tool_name", "unknown")),
             f'[{latency_style(duration)}]{duration:.0f} ms[/]',
-            "[green]OK[/]" if success else "[red]RETRY[/]",
+            success("OK") if success_flag else error("RETRY"),
             detail,
         )
     return table
@@ -215,14 +245,15 @@ def build_steps_table(steps: list[dict[str, Any]]) -> Table:
 def render_trace_panel(trace_data: dict[str, Any], title: str = "Trace") -> Panel:
     return Panel(
         build_trace_summary_table(trace_data),
-        title=f"[bold]{title}[/bold]",
+        title=f"[{current_theme().primary}]{title}[/]",
         subtitle=f"[{status_style(str(trace_data['status']))}]{str(trace_data['status']).upper()}[/]",
-        border_style="bright_black",
+        border_style=current_theme().border,
         padding=(1, 2),
     )
 
 
 def render_trace_report(trace_data: dict[str, Any]) -> None:
+    theme = current_theme()
     console.print()
     console.print(render_trace_panel(trace_data, "TraceLLM Trace"))
     console.print()
@@ -234,7 +265,7 @@ def render_trace_report(trace_data: dict[str, Any]) -> None:
             Panel.fit(
                 response_preview[:600] + ("..." if len(response_preview) > 600 else ""),
                 title="Response Preview",
-                border_style="bright_black",
+                border_style=theme.border,
                 padding=(1, 2),
             )
         )
@@ -245,41 +276,43 @@ def render_replay_tree(
     steps: list[dict[str, Any]],
     active_index: int | None = None,
 ) -> Tree:
+    theme = current_theme()
     tree = Tree("", hide_root=True)
     for i, step in enumerate(steps, 1):
         tool_name = step.get("tool_name", "unknown")
         duration = float(step.get("duration", 0.0))
-        success = bool(step.get("success", True))
-        dur_str = f"[bright_black]{duration:.0f}ms[/bright_black]"
+        success_flag = bool(step.get("success", True))
+        dur_str = secondary(f"{duration:.0f}ms")
         if active_index == i:
-            branch = tree.add(f"[cyan]▶[/cyan] [white]{tool_name}[/white] {dur_str}")
+            branch = tree.add(f"[{theme.info}]▶[/] [{theme.primary}]{tool_name}[/] {dur_str}")
         elif active_index is not None and i < active_index:
-            status = "[green]OK[/green]" if success else "[red]RETRY[/red]"
-            branch = tree.add(f"[green]✓[/green] [dim]{tool_name}[/dim] {dur_str} {status}")
+            status_tag = success("OK") if success_flag else error("RETRY")
+            branch = tree.add(f"{tick()} [dim]{tool_name}[/dim] {dur_str} {status_tag}")
         elif active_index is not None and i > active_index:
             branch = tree.add(f"  [dim]{tool_name}[/dim] {dur_str}")
         else:
-            status = "[green]OK[/green]" if success else "[red]RETRY[/red]"
-            branch = tree.add(f"  [white]{tool_name}[/white] {dur_str} {status}")
+            status_tag = success("OK") if success_flag else error("RETRY")
+            branch = tree.add(f"  [{theme.primary}]{tool_name}[/] {dur_str} {status_tag}")
     return tree
 
 
 def render_replay_report(trace_result: dict[str, Any]) -> None:
     steps = trace_result.get("steps", [])
     console.print()
-    console.print("Replay complete", style="bold white")
+    console.print(primary("Replay complete"))
     console.print()
     tree = render_replay_tree(steps, active_index=len(steps))
-    console.print(Panel(tree, border_style="bright_black", padding=(1, 2)))
+    console.print(Panel(tree, border_style=current_theme().border, padding=(1, 2)))
     console.print()
 
 
 def build_progress_bar(description: str, total: int) -> Progress:
+    theme = current_theme()
     progress = Progress(
-        SpinnerColumn(style="white"),
-        TextColumn("[bright_black]{task.description}"),
-        BarColumn(bar_width=24, style="bright_black", pulse_style="white"),
-        TextColumn("[bright_black]{task.completed}/{task.total}[/bright_black]"),
+        SpinnerColumn(style=theme.info),
+        TextColumn(f"[{theme.secondary}]{{task.description}}"),
+        BarColumn(bar_width=24, style=theme.secondary, pulse_style=theme.primary),
+        TextColumn(f"[{theme.secondary}]{{task.completed}}/{{task.total}}[/]"),
         TimeElapsedColumn(),
         expand=True,
     )
@@ -293,11 +326,12 @@ def build_live_trace_screen(
     finished_steps: list[dict[str, Any]],
     current_label: str,
 ) -> Panel:
+    theme = current_theme()
     progress = Progress(
-        SpinnerColumn(style="white"),
-        TextColumn("[white]{task.description}"),
-        BarColumn(bar_width=28, style="bright_black", complete_style="white"),
-        TextColumn("[bright_black]{task.completed}/{task.total}[/bright_black]"),
+        SpinnerColumn(style=theme.info),
+        TextColumn(f"[{theme.primary}]{{task.description}}"),
+        BarColumn(bar_width=28, style=theme.secondary, complete_style=theme.primary),
+        TextColumn(f"[{theme.secondary}]{{task.completed}}/{{task.total}}[/]"),
         TimeElapsedColumn(),
         expand=True,
     )
@@ -305,10 +339,10 @@ def build_live_trace_screen(
     task_id = progress.add_task(current_label, total=total, completed=len(finished_steps))
 
     timeline = Table.grid(padding=(0, 2))
-    timeline.add_column(style="bright_black", width=3)
-    timeline.add_column(style="white")
-    timeline.add_column(style="bright_black", justify="right")
-    timeline.add_column(style="bright_black")
+    timeline.add_column(style=theme.secondary, width=3)
+    timeline.add_column(style=theme.primary)
+    timeline.add_column(style=theme.secondary, justify="right")
+    timeline.add_column(style=theme.secondary)
 
     for index, step in enumerate(finished_steps[-5:], start=max(1, len(finished_steps) - 4)):
         duration = float(step.get("duration", 0.0))
@@ -323,30 +357,31 @@ def build_live_trace_screen(
         )
 
     body = Group(
-        Align.left(Text(prompt, style="bold white")),
-        Text(f"model: {model_name}", style="bright_black"),
-        Rule(style="bright_black"),
+        Align.left(Text(prompt, style=theme.primary)),
+        Text(f"model: {model_name}", style=theme.secondary),
+        Rule(style=theme.secondary),
         progress,
-        Rule(style="bright_black"),
+        Rule(style=theme.secondary),
         timeline,
     )
     progress.update(task_id, completed=len(finished_steps))
-    return Panel(body, title="Live Trace", border_style="bright_black", padding=(1, 2))
+    return Panel(body, title="Live Trace", border_style=theme.border, padding=(1, 2))
 
 
 def trace_command_footer(trace_data: dict[str, Any]) -> None:
+    theme = current_theme()
     status = str(trace_data["status"])
     badge = render_status_badge(status)
     console.print(
         Panel.fit(
-            f"[bright_black]trace_id[/bright_black] {trace_data['trace_id']}\n"
-            f"[bright_black]model[/bright_black] {trace_data.get('model_name', 'unknown')}\n"
-            f"[bright_black]latency[/bright_black] {float(trace_data['latency']):.2f} ms\n"
-            f"[bright_black]tokens[/bright_black] {trace_data['token_count']:,}\n"
-            f"[bright_black]retries[/bright_black] {trace_data['retry_count']}\n"
+            f"[{theme.secondary}]trace_id[/] {trace_data['trace_id']}\n"
+            f"[{theme.secondary}]model[/] {trace_data.get('model_name', 'unknown')}\n"
+            f"[{theme.secondary}]latency[/] {float(trace_data['latency']):.2f} ms\n"
+            f"[{theme.secondary}]tokens[/] {trace_data['token_count']:,}\n"
+            f"[{theme.secondary}]retries[/] {trace_data['retry_count']}\n"
             f"{badge}",
             title="Trace Complete",
-            border_style="bright_black",
+            border_style=theme.border,
             padding=(1, 2),
         )
     )
@@ -359,17 +394,18 @@ def render_project_credentials(
     api_key: str,
     description: str,
 ) -> None:
+    theme = current_theme()
     console.print()
     console.print(
         Panel.fit(
-            f"[bold white]{name}[/bold white]\n\n"
-            f"[bright_black]project_id[/bright_black]  {project_id}\n"
-            f"[bright_black]env[/bright_black]         [{environment_style(environment)}]{environment}[/]\n"
-            f"[bright_black]api_key[/bright_black]     [bold]{api_key}[/bold]\n"
-            f"[bright_black]desc[/bright_black]        {description or 'n/a'}\n\n"
+            f"[{theme.primary}]{name}[/]\n\n"
+            f"[{theme.secondary}]project_id[/]  {project_id}\n"
+            f"[{theme.secondary}]env[/]         [{environment_style(environment)}]{environment}[/]\n"
+            f"[{theme.secondary}]api_key[/]     [bold]{api_key}[/bold]\n"
+            f"[{theme.secondary}]desc[/]        {description or 'n/a'}\n\n"
             f"[dim]Save this key — it will not be shown again.[/dim]",
             title="Project Credentials",
-            border_style="bright_black",
+            border_style=theme.border,
             padding=(1, 2),
         )
     )
@@ -377,13 +413,14 @@ def render_project_credentials(
 
 
 def render_export_success(path: Path, count: int) -> None:
+    theme = current_theme()
     console.print()
     console.print(
         Panel.fit(
-            f"[bold white]{count} traces exported[/bold white]\n"
+            f"[{theme.primary}]{count} traces exported[/]\n"
             f"[dim]{path}[/dim]",
             title="Export Complete",
-            border_style="bright_black",
+            border_style=theme.border,
             padding=(1, 2),
         )
     )

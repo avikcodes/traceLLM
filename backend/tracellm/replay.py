@@ -7,6 +7,7 @@ from rich.rule import Rule
 
 from tracellm.db import fetch_trace
 from tracellm.mascot import MascotState, header, message
+from tracellm.themes import current_theme, warning as warn, secondary
 from tracellm.tree_renderer import render_execution_panel
 from tracellm.utils import (
     console,
@@ -16,6 +17,7 @@ from tracellm.utils import (
 
 
 def _replay_detail_panel(trace_data: dict[str, Any], step: dict[str, Any], index: int, total: int) -> Panel:
+    theme = current_theme()
     duration = float(step.get("duration", 0.0))
     success = bool(step.get("success", True))
     tool_name = step.get("tool_name", "unknown")
@@ -23,49 +25,50 @@ def _replay_detail_panel(trace_data: dict[str, Any], step: dict[str, Any], index
     out = str(step.get("output", {}))
 
     lines = [
-        f"[bright_black]step[/bright_black]     {index}/{total}",
-        f"[bright_black]tool[/bright_black]     [white]{tool_name}[/white]",
-        f"[bright_black]duration[/bright_black] {duration:.0f} ms",
-        f"[bright_black]status[/bright_black]   {'[green]OK[/]' if success else '[red]RETRY[/]'}",
+        f"[{theme.secondary}]step[/]     {index}/{total}",
+        f"[{theme.secondary}]tool[/]     [{theme.primary}]{tool_name}[/]",
+        f"[{theme.secondary}]duration[/] {duration:.0f} ms",
+        f"[{theme.secondary}]status[/]   {'[' + theme.success + ']OK[/]' if success else '[' + theme.error + ']RETRY[/]'}",
     ]
     if inp:
         clipped = inp[:200] + ("..." if len(inp) > 200 else "")
-        lines.append(f"[bright_black]input[/bright_black]   [dim]{clipped}[/dim]")
+        lines.append(f"[{theme.secondary}]input[/]   [dim]{clipped}[/dim]")
     if out:
         clipped = out[:200] + ("..." if len(out) > 200 else "")
-        lines.append(f"[bright_black]output[/bright_black]  [dim]{clipped}[/dim]")
+        lines.append(f"[{theme.secondary}]output[/]  [dim]{clipped}[/dim]")
 
     body = "\n".join(lines)
-    return Panel.fit(body, title="Step Detail", border_style="bright_black", padding=(1, 2))
+    return Panel.fit(body, title="Step Detail", border_style=theme.border, padding=(1, 2))
 
 
 def replay_trace(trace_id: str, speed: float = 1.0, show_response: bool = False) -> None:
     trace = fetch_trace(trace_id)
     trace_data = trace.model_dump(mode="json")
     steps = trace_data.get("steps", [])
+    theme = current_theme()
 
     if not steps:
-        console.print(f"[yellow]Trace {trace_id} has no steps to replay.[/yellow]")
+        console.print(f"[{theme.warning}]Trace {trace_id} has no steps to replay.[/]")
         return
 
     console.print()
     console.print(header("Replaying execution timeline...", MascotState.LOADING))
     console.print()
     meta_lines = [
-        f"[bright_black]trace_id[/bright_black] {trace_data['trace_id']}",
-        f"[bright_black]status[/bright_black]   [{status_style(str(trace_data['status']))}]{str(trace_data['status']).upper()}[/]",
-        f"[bright_black]latency[/bright_black]  {float(trace_data['latency']):.2f} ms",
-        f"[bright_black]retries[/bright_black]  {trace_data['retry_count']}",
-        f"[bright_black]steps[/bright_black]    {len(steps)}",
+        f"[{theme.secondary}]trace_id[/] {trace_data['trace_id']}",
+        f"[{theme.secondary}]status[/]   [{status_style(str(trace_data['status']))}]{str(trace_data['status']).upper()}[/]",
+        f"[{theme.secondary}]latency[/]  {float(trace_data['latency']):.2f} ms",
+        f"[{theme.secondary}]retries[/]  {trace_data['retry_count']}",
+        f"[{theme.secondary}]steps[/]    {len(steps)}",
     ]
-    console.print(Panel.fit("\n".join(meta_lines), title="Replay", border_style="bright_black", padding=(1, 2)))
+    console.print(Panel.fit("\n".join(meta_lines), title="Replay", border_style=theme.border, padding=(1, 2)))
 
     with Live(console=console, refresh_per_second=12, transient=False) as live:
         for index, step in enumerate(steps, start=1):
             tree_panel = render_execution_panel(steps, active_index=index)
             detail = _replay_detail_panel(trace_data, step, index, len(steps))
             body = f"{tree_panel}\n\n{detail}"
-            live.update(Panel(body, title=f"Replaying step {index}/{len(steps)}", border_style="bright_black", padding=(1, 2)))
+            live.update(Panel(body, title=f"Replaying step {index}/{len(steps)}", border_style=theme.border, padding=(1, 2)))
             delay = float(step.get("duration", 0.0)) / 1000 / max(speed, 0.1)
             time.sleep(max(0.08, min(0.55, delay)))
 
@@ -77,4 +80,4 @@ def replay_trace(trace_id: str, speed: float = 1.0, show_response: bool = False)
     console.print()
     render_trace_report(trace_data)
     if show_response:
-        console.print(Panel(str(trace_data.get("response") or ""), title="Full Response", border_style="bright_black", padding=(1, 2)))
+        console.print(Panel(str(trace_data.get("response") or ""), title="Full Response", border_style=theme.border, padding=(1, 2)))

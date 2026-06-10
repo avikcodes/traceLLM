@@ -10,6 +10,7 @@ from rich.table import Table
 
 from tracellm.banner import render_banner
 from tracellm.mascot import MascotState, message
+from tracellm.themes import current_theme, success, warning as warn, cross, tick
 from tracellm.utils import console
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -30,12 +31,9 @@ def _start_fastapi(port: int) -> subprocess.Popen:
 
 
 def _health_check(port: int, timeout: int = 30) -> tuple[bool, str, str]:
-    """Poll the API health endpoint.
-
-    Returns (api_ok, storage_type, storage_detail).
-    """
     start = time.time()
-    with console.status("[bold white]Waiting for API server...[/bold white]"):
+    theme = current_theme()
+    with console.status(f"[{theme.info}]Waiting for API server...[/]"):
         while time.time() - start < timeout:
             try:
                 response = httpx.get(f"http://127.0.0.1:{port}/api/", timeout=3)
@@ -52,30 +50,29 @@ def _health_check(port: int, timeout: int = 30) -> tuple[bool, str, str]:
 
 
 def _open_browser(url: str) -> None:
-    """Open the default browser (cross-platform)."""
     import webbrowser
-
     webbrowser.open(url)
 
 
 def _render_status(storage_type: str, storage_detail: str, api_ok: bool, port: int) -> None:
+    theme = current_theme()
     table = Table.grid(padding=(0, 2))
     table.add_column()
     table.add_column()
 
     table.add_row(
         "API Server",
-        f"[green]●[/green] http://127.0.0.1:{port}" if api_ok else "[red]●[/red] Failed",
+        f"{tick()} http://127.0.0.1:{port}" if api_ok else f"{cross()} Failed",
     )
     if storage_type == "sqlite":
         table.add_row(
             "Storage",
-            f"[green]●[/green] SQLite Local [dim]({storage_detail})[/dim]",
+            f"{tick()} SQLite Local [dim]({storage_detail})[/dim]",
         )
     else:
         table.add_row(
             "Storage",
-            f"[green]●[/green] MongoDB [dim]({storage_detail})[/dim]",
+            f"{tick()} MongoDB [dim]({storage_detail})[/dim]",
         )
     table.add_row(
         "WebSocket",
@@ -83,12 +80,12 @@ def _render_status(storage_type: str, storage_detail: str, api_ok: bool, port: i
     )
     table.add_row(
         "Dashboard",
-        f"[green]●[/green] http://127.0.0.1:{port}" if api_ok else "[red]●[/red] Unavailable",
+        f"{tick()} http://127.0.0.1:{port}" if api_ok else f"{cross()} Unavailable",
     )
 
     console.print()
     console.print(
-        Panel.fit(table, title="TraceLLM Stack", border_style="bright_black", padding=(1, 3))
+        Panel.fit(table, title="TraceLLM Stack", border_style=theme.border, padding=(1, 3))
     )
     console.print()
 
@@ -105,27 +102,27 @@ def run_start(port: int = 8000, dashboard_port: int = 3000, no_browser: bool = F
 
     if api_ok:
         if storage_type == "sqlite":
-            console.print(f"  [green]✓[/green] SQLite initialized")
+            console.print(f"  {tick()} SQLite initialized")
         else:
-            console.print(f"  [green]✓[/green] MongoDB connected")
-        console.print(f"  [green]✓[/green] API ready")
-        console.print(f"  [green]✓[/green] WebSocket ready")
-        console.print(f"  [green]✓[/green] Dashboard ready")
+            console.print(f"  {tick()} MongoDB connected")
+        console.print(f"  {tick()} API ready")
+        console.print(f"  {tick()} WebSocket ready")
+        console.print(f"  {tick()} Dashboard ready")
 
         if not no_browser:
-            console.print(f"  [green]✓[/green] Opening browser...")
+            console.print(f"  {tick()} Opening browser...")
             _open_browser(f"http://127.0.0.1:{port}")
     else:
-        console.print(f"  [red]✗[/red] API failed")
-        console.print(f"  [red]✗[/red] Storage unavailable")
-        console.print(f"  [red]✗[/red] WebSocket unavailable")
+        console.print(f"  {cross()} API failed")
+        console.print(f"  {cross()} Storage unavailable")
+        console.print(f"  {cross()} WebSocket unavailable")
 
     _render_status(storage_type, storage_detail, api_ok, port)
 
     try:
         api_process.wait()
     except KeyboardInterrupt:
-        console.print("\n[yellow]Shutting down...[/yellow]")
+        console.print(f"\n{warn('Shutting down...')}")
         api_process.terminate()
         api_process.wait()
-        console.print("[green]Stopped.[/green]")
+        console.print(success("Stopped."))

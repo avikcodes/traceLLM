@@ -11,6 +11,9 @@ from tracellm.utils import console, render_project_credentials
 
 app = typer.Typer(help="TraceLLM SDK and developer CLI.")
 
+theme_app = typer.Typer(help="Manage CLI themes.")
+app.add_typer(theme_app, name="theme")
+
 
 @app.callback(invoke_without_command=True)
 def cli_entry(ctx: typer.Context) -> None:
@@ -19,15 +22,104 @@ def cli_entry(ctx: typer.Context) -> None:
         run_palette(app)
 
 
+@theme_app.command("list")
+def theme_list() -> None:
+    """List all available themes."""
+    from tracellm.themes import get_available_themes, get_current_theme_name
+    themes = get_available_themes()
+    current = get_current_theme_name()
+    console.print()
+    console.print("[bold]Available Themes:[/bold]")
+    console.print()
+    for t in themes:
+        marker = "●" if t == current else " "
+        style = "bold white" if t == current else "white"
+        console.print(f"  {marker} [{style}]{t}[/]")
+    console.print()
+
+
+@theme_app.command("current")
+def theme_current() -> None:
+    """Show the current theme."""
+    from tracellm.themes import get_current_theme_name
+    name = get_current_theme_name()
+    console.print()
+    console.print(f"[bold]Current Theme:[/bold] {name}")
+    console.print()
+
+
+@theme_app.command("set")
+def theme_set(
+    theme: str = typer.Argument(..., help="Theme name to activate."),
+) -> None:
+    """Switch to a theme."""
+    from tracellm.themes import get_theme, set_current_theme
+    found = get_theme(theme)
+    if found is None:
+        available = get_available_themes()
+        console.print(f"[red]Unknown theme:[/red] {theme}")
+        console.print(f"[dim]Available themes: {', '.join(available)}[/dim]")
+        raise typer.Exit(code=1)
+    set_current_theme(theme)
+    console.print()
+    console.print(f"  Theme changed to [bold]{found.name.title()}.[/bold]")
+    console.print()
+
+
+@theme_app.command("reset")
+def theme_reset() -> None:
+    """Reset theme back to default (dark)."""
+    from tracellm.themes import reset_theme
+    reset_theme()
+    console.print()
+    console.print("  Theme reset to default.")
+    console.print()
+
+
+@theme_app.command("create")
+def theme_create() -> None:
+    """Create a custom theme interactively."""
+    from tracellm.themes import save_custom_theme
+    name = typer.prompt("Theme name").strip().lower()
+    if not name:
+        console.print("[red]Theme name cannot be empty.[/red]")
+        raise typer.Exit(code=1)
+    console.print("Enter hex colors (e.g. #ff0000) or Rich style names (e.g. bold white, green).")
+    primary = typer.prompt("Primary color", default="bold white").strip()
+    secondary = typer.prompt("Secondary color", default="bright_black").strip()
+    success = typer.prompt("Success color", default="green").strip()
+    warning = typer.prompt("Warning color", default="yellow").strip()
+    error = typer.prompt("Error color", default="red").strip()
+    info = typer.prompt("Info color", default="cyan").strip()
+    border = typer.prompt("Border color", default="bright_black").strip()
+    accent = typer.prompt("Accent color", default="bold white").strip()
+
+    theme_data = {
+        "primary": primary,
+        "secondary": secondary,
+        "success": success,
+        "warning": warning,
+        "error": error,
+        "info": info,
+        "border": border,
+        "accent": accent,
+    }
+    save_custom_theme(name, theme_data)
+    console.print()
+    console.print(f"  Custom theme [bold]{name}[/bold] created.")
+    console.print()
+
+
 @app.command()
 def demo() -> None:
     """Generate a realistic demo trace."""
     result = llm_response()
     retries = result.get("retry_count", 0)
     steps = len(result.get("steps", []))
+    from tracellm.themes import primary, secondary
     console.print()
-    console.print("[bold white]Demo complete[/bold white]")
-    console.print(f"[bright_black]{steps} steps, {retries} retries[/bright_black]")
+    console.print(primary("Demo complete"))
+    console.print(secondary(f"{steps} steps, {retries} retries"))
     console.print()
 
 
@@ -79,10 +171,11 @@ def monitor(
 ) -> None:
     """Watch incoming real traces in realtime."""
     from tracellm.monitor import run_monitor as _run_monitor
+    from tracellm.themes import warning as warn
     try:
         _run_monitor(refresh=refresh, limit=limit, ws_host=ws_host, ws_port=ws_port)
     except KeyboardInterrupt:
-        console.print("\n[yellow]Monitor stopped.[/yellow]")
+        console.print(f"\n{warn('Monitor stopped.')}")
 
 
 @app.command()

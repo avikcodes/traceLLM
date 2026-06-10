@@ -1,5 +1,3 @@
-"""Interactive command palette for TraceLLM CLI."""
-
 from __future__ import annotations
 
 import sys
@@ -13,6 +11,7 @@ from rich.table import Table
 from rich.text import Text
 
 from tracellm.mascot import render, MascotState
+from tracellm.themes import current_theme, secondary, warning as warn
 
 _OPTIONS: list[tuple[str, str, str]] = [
     ("\U0001f996  Trace Request", "trace", "Run a traced prompt simulation"),
@@ -27,14 +26,12 @@ _IS_WINDOWS = sys.platform == "win32"
 
 
 def _get_key() -> str:
-    """Read a single keypress from the terminal (cross-platform)."""
     if _IS_WINDOWS:
         return _get_key_windows()
     return _get_key_unix()
 
 
 def _get_key_unix() -> str:
-    """Unix key reader using termios/tty."""
     import termios
     import tty
     fd = sys.stdin.fileno()
@@ -55,7 +52,6 @@ def _get_key_unix() -> str:
 
 
 def _get_key_windows() -> str:
-    """Windows key reader using msvcrt."""
     import msvcrt
     ch = msvcrt.getch()
     if ch == b"\xe0":
@@ -71,19 +67,19 @@ def _get_key_windows() -> str:
 
 
 def _render_palette(options: list[tuple[str, str, str]], selected: int) -> Panel:
-    """Render the interactive palette as a Rich Panel."""
-    title = Text("TraceLLM Command Palette", style="bold white")
+    theme = current_theme()
+    title = Text("TraceLLM Command Palette", style=theme.primary)
     subtitle = Text("Use arrow keys to navigate, Enter to select, q to quit", style="dim")
 
     table = Table.grid(padding=(0, 2))
-    table.add_column(style="bright_black", width=2)
-    table.add_column(style="white", width=20)
+    table.add_column(style=theme.secondary, width=2)
+    table.add_column(style=theme.primary, width=20)
     table.add_column(style="dim")
 
     for i, (label, _, desc) in enumerate(options):
         indicator = "\u25b6" if i == selected else " "
-        style = "bold cyan" if i == selected else "white"
-        table.add_row(indicator, f"[{style}]{label}[/]", f"[bright_black]{desc}[/]")
+        style = theme.info if i == selected else theme.primary
+        table.add_row(indicator, f"[{style}]{label}[/]", f"[{theme.secondary}]{desc}[/]")
 
     body = Table.grid(padding=(0, 1))
     body.add_column()
@@ -94,11 +90,10 @@ def _render_palette(options: list[tuple[str, str, str]], selected: int) -> Panel
     body.add_row(Text(""))
     body.add_row(Align.center(render(MascotState.IDLE)))
 
-    return Panel(body, border_style="bright_black", padding=(1, 3))
+    return Panel(body, border_style=theme.border, padding=(1, 3))
 
 
 def _prompt_for_trace(console: Any) -> str | None:
-    """Prompt user for a trace prompt. Returns the prompt or None if empty."""
     console.print()
     console.print("[bold]Enter prompt:[/bold]")
     try:
@@ -109,7 +104,6 @@ def _prompt_for_trace(console: Any) -> str | None:
 
 
 def run_palette(app: typer.Typer) -> None:
-    """Show interactive command palette and let the user pick a command."""
     from tracellm.utils import console
 
     while True:
@@ -135,7 +129,7 @@ def run_palette(app: typer.Typer) -> None:
                             if prompt:
                                 app(args=["trace", prompt])
                                 return
-                            console.print("[yellow]Prompt cannot be empty. Returning to menu...[/yellow]")
+                            console.print(warn("Prompt cannot be empty. Returning to menu..."))
                             restart = True
                         else:
                             app(args=[cmd])
@@ -159,15 +153,15 @@ def run_palette(app: typer.Typer) -> None:
 
 
 def _run_fallback(app: typer.Typer) -> None:
-    """Fallback numbered menu when raw terminal input is unavailable."""
     from tracellm.utils import console
 
+    theme = current_theme()
     console.print()
-    console.print(Text("TraceLLM Command Palette", style="bold white"))
+    console.print(Text("TraceLLM Command Palette", style=theme.primary))
     console.print()
     for i, (label, _, desc) in enumerate(_OPTIONS, 1):
-        console.print(f"  [bright_black]{i}.[/] {label}  [dim]{desc}[/dim]")
-    console.print(f"  [bright_black]0.[/] [dim]Quit[/dim]")
+        console.print(f"  [{theme.secondary}]{i}.[/] {label}  [dim]{desc}[/dim]")
+    console.print(f"  [{theme.secondary}]0.[/] [dim]Quit[/dim]")
     console.print()
 
     try:

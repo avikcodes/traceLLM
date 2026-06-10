@@ -10,6 +10,7 @@ from typing import Any, Callable
 from tracellm.db import resolve_api_key, save_trace_payload
 from tracellm.mascot import MascotState, header, message
 from tracellm.summary import print_summary
+from tracellm.themes import warning as warn
 from tracellm.trace_stream import TraceStream
 from tracellm.utils import (
     SLOW_TRACE_THRESHOLD_MS,
@@ -83,7 +84,7 @@ def persist_trace(trace_data: dict[str, Any]) -> None:
     try:
         save_trace_payload(trace_data)
     except Exception as save_error:
-        console.print(f"[yellow]Trace persistence skipped:[/yellow] {save_error}")
+        console.print(f"{warn('Trace persistence skipped:')} {save_error}")
 
 
 def finalize_trace(
@@ -560,7 +561,6 @@ def run_live_trace(
                     trace_error = error
                     raise
 
-    # If simulation didn't generate steps, emit step events from simulation
     if not finished_steps and result:
         finished_steps = coerce_steps(result)
 

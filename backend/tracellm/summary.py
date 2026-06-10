@@ -1,5 +1,3 @@
-"""Premium trace summary card."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -8,18 +6,19 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from tracellm.themes import current_theme
 from tracellm.utils import render_status_badge
 
 
 def render_summary(trace_data: dict[str, Any]) -> Panel:
-    """Render a professional trace summary card."""
+    theme = current_theme()
     status = str(trace_data["status"])
     badge = render_status_badge(status)
-    border = "green" if status == "success" else "yellow" if status == "warning" else "red"
+    border = theme.success if status == "success" else theme.warning if status == "warning" else theme.error
 
     table = Table.grid(padding=(0, 3))
-    table.add_column(style="bright_black", width=14)
-    table.add_column(style="white")
+    table.add_column(style=theme.secondary, width=14)
+    table.add_column(style=theme.primary)
 
     table.add_row("Model", str(trace_data.get("model_name", "unknown")))
     table.add_row("Latency", f"{float(trace_data['latency']):.2f} ms")
@@ -46,7 +45,6 @@ def render_summary(trace_data: dict[str, Any]) -> Panel:
 
 
 def print_summary(trace_data: dict[str, Any]) -> None:
-    """Print the trace summary card to console."""
     from tracellm.utils import console
     console.print()
     console.print(render_summary(trace_data))

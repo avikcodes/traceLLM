@@ -1,10 +1,3 @@
-"""Live monitor dashboard — htop for AI systems.
-
-Connects to the backend WebSocket for real-time trace events, falls back to
-polling the storage backend when the server is unavailable, and reconnects
-automatically on disconnect.
-"""
-
 from __future__ import annotations
 
 import json
@@ -21,6 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from tracellm.mascot import MascotState, message
+from tracellm.themes import current_theme, success, error, warning as warn, secondary
 from tracellm.utils import console, status_style, latency_style
 
 logger = logging.getLogger(__name__)
@@ -30,11 +24,6 @@ _WS_DEFAULT_PORT = int(os.environ.get("TRACELLM_WS_PORT", "8000"))
 
 
 def _discover_ws_endpoint(hint_host: str, hint_port: int) -> tuple[str, int]:
-    """Probe common ports if the hinted endpoint is unreachable.
-
-    Tries the hint first, then falls through to common alternatives.
-    Returns the first port that responds to a TCP connect.
-    """
     import socket
 
     def _probe(host: str, port: int) -> bool:
@@ -59,18 +48,13 @@ def _discover_ws_endpoint(hint_host: str, hint_port: int) -> tuple[str, int]:
     return hint_host, hint_port
 
 
-# ── WebSocket background listener ──────────────────────────────────────
-
-
 def _ws_listener(
     host: str,
     port: int,
     event_queue: queue.Queue,
     stop_event: threading.Event,
 ) -> None:
-    """Background thread: connect to WebSocket and push events to the queue."""
     import asyncio
-
     import websockets
 
     async def _listen() -> None:
@@ -86,7 +70,6 @@ def _ws_listener(
                 async with websockets.connect(uri, ping_interval=20) as ws:
                     retry_delay = 1.0
                     event_queue.put(("ws_connected", None))
-                    # Consume the welcome message
                     try:
                         welcome = await asyncio.wait_for(ws.recv(), timeout=2)
                         event_queue.put(("ws_welcome", welcome))
@@ -118,9 +101,6 @@ def _ws_listener(
     asyncio.run(_listen())
 
 
-# ── Stats computation ──────────────────────────────────────────────────
-
-
 def _compute_stats(traces: list[Any]) -> dict[str, Any]:
     total = len(traces)
     completed = sum(1 for t in traces if getattr(t, "status", "") == "success")
@@ -141,9 +121,6 @@ def _compute_stats(traces: list[Any]) -> dict[str, Any]:
     }
 
 
-# ── Dashboard rendering ────────────────────────────────────────────────
-
-
 def _render_dashboard(
     stats: dict[str, Any],
     traces: list[Any],
@@ -153,23 +130,24 @@ def _render_dashboard(
     ws_detail: str,
     polling: bool,
 ) -> Panel:
+    theme = current_theme()
     status_line = message("Monitor active", MascotState.LOADING)
 
     stats_table = Table.grid(padding=(0, 3))
-    stats_table.add_column(style="bright_black", width=20)
-    stats_table.add_column(style="white")
+    stats_table.add_column(style=theme.secondary, width=20)
+    stats_table.add_column(style=theme.primary)
 
     stats_table.add_row("Total Traces", str(stats["total"]))
-    stats_table.add_row("Completed", f"[green]{stats['completed']}[/green]")
-    stats_table.add_row("Errors", f"[red]{stats['errors']}[/red]")
+    stats_table.add_row("Completed", success(str(stats["completed"])))
+    stats_table.add_row("Errors", error(str(stats["errors"])))
     stats_table.add_row("Avg Latency", f"{stats['avg_latency']:.0f} ms")
-    stats_table.add_row("P95 Latency", f"[yellow]{stats['p95_latency']:.0f} ms[/yellow]")
+    stats_table.add_row("P95 Latency", warn(f"{stats['p95_latency']:.0f} ms"))
     stats_table.add_row("Total Tokens", f"{stats['total_tokens']:,}")
 
     if ws_status:
         stats_table.add_row("WebSocket", ws_status)
     if ws_detail:
-        stats_table.add_row("", f"[bright_black]{ws_detail}[/bright_black]")
+        stats_table.add_row("", secondary(ws_detail))
 
     traces_table = Table(box=None, padding=(0, 2), header_style="dim")
     traces_table.add_column("Time", width=8)
@@ -196,13 +174,13 @@ def _render_dashboard(
     stats_panel = Panel(
         stats_table,
         title="\U0001f4ca  Overview",
-        border_style="bright_black",
+        border_style=theme.border,
         padding=(1, 2),
     )
     traces_panel = Panel(
         traces_table,
         title=f"\U0001f4cb  Recent Traces  ({seen_count} unique)",
-        border_style="bright_black",
+        border_style=theme.border,
         padding=(1, 2),
     )
 
@@ -225,12 +203,9 @@ def _render_dashboard(
         body,
         title="TraceLLM Monitor",
         subtitle=subtitle,
-        border_style="bright_black",
+        border_style=theme.border,
         padding=(1, 2),
     )
-
-
-# ── Main entry point ───────────────────────────────────────────────────
 
 
 def run_monitor(
@@ -239,15 +214,6 @@ def run_monitor(
     ws_host: str = _WS_DEFAULT_HOST,
     ws_port: int = _WS_DEFAULT_PORT,
 ) -> None:
-    """Run the live monitor dashboard.
-
-    Connects to the TraceLLM backend WebSocket for real-time trace events.
-    Falls back to polling the storage backend when the server is unavailable.
-    Reconnects automatically on disconnect.
-
-    When WebSocket is connected, polling is suspended and only live events
-    drive the display for minimal DB overhead.
-    """
     from tracellm.db import fetch_recent_traces
 
     seen: set[str] = set()
@@ -263,7 +229,6 @@ def run_monitor(
     console.print(message("Monitor starting...", MascotState.LOADING))
     console.print()
 
-    # Start WebSocket listener in background thread
     ws_thread = threading.Thread(
         target=_ws_listener,
         args=(ws_host, ws_port, event_queue, stop_event),
@@ -271,42 +236,39 @@ def run_monitor(
     )
     ws_thread.start()
 
-    # Local cache of traces seen via WebSocket events
     ws_traces: list[Any] = []
     db_traces: list[Any] = []
 
     with Live(console=console, refresh_per_second=4, screen=True) as live:
         try:
             while True:
-                # Drain queued WebSocket events
                 while not event_queue.empty():
                     try:
                         evt_type, evt_data = event_queue.get_nowait()
                         if evt_type == "ws_connected":
-                            ws_status = "[green]\u25cf Connected[/green]"
+                            ws_status = success("\u25cf Connected")
                             ws_detail = ""
                             ws_connected = True
                             has_ever_connected = True
                         elif evt_type == "ws_welcome":
                             pass
                         elif evt_type == "ws_disconnected":
-                            ws_status = "[yellow]\u25cf Disconnected[/yellow]"
+                            ws_status = warn("\u25cf Disconnected")
                             ws_detail = "reconnecting..."
                             ws_connected = False
                         elif evt_type == "ws_error":
                             if not has_ever_connected:
-                                ws_status = "[yellow]\u25cf Unavailable[/yellow]"
+                                ws_status = warn("\u25cf Unavailable")
                                 ws_detail = "polling storage"
                             else:
-                                ws_status = "[yellow]\u25cf Error[/yellow]"
+                                ws_status = warn("\u25cf Error")
                                 ws_detail = str(evt_data)[:40]
                             ws_connected = False
                         elif evt_type == "ws_retry":
-                            ws_status = "[yellow]\u25cf Reconnecting[/yellow]"
+                            ws_status = warn("\u25cf Reconnecting")
                             ws_detail = str(evt_data)
                             ws_connected = False
                         elif evt_type == "trace":
-                            # Build a lightweight object so _compute_stats can read it
                             t = _make_trace_obj(evt_data)
                             if t.trace_id not in seen:
                                 seen.add(t.trace_id)
@@ -315,7 +277,6 @@ def run_monitor(
                     except queue.Empty:
                         break
 
-                # Decide whether to poll storage or use live data
                 if needs_initial_fetch or not ws_connected:
                     try:
                         db_traces = fetch_recent_traces(limit=limit)
@@ -324,15 +285,14 @@ def run_monitor(
                         needs_initial_fetch = False
                     except Exception as exc:
                         live.update(Panel(
-                            f"[yellow]DB poll error: {exc}[/yellow]\n"
-                            f"[bright_black]will retry in {refresh}s[/bright_black]",
+                            f"[{current_theme().warning}]DB poll error: {exc}[/]\n"
+                            f"[{current_theme().secondary}]will retry in {refresh}s[/]",
                             title="Monitor",
-                            border_style="bright_black",
+                            border_style=current_theme().border,
                         ))
                         time.sleep(refresh)
                         continue
 
-                # Use WS traces when connected, DB traces otherwise
                 display_traces = ws_traces if (ws_connected and has_ever_connected and ws_traces) else db_traces
                 polling = not ws_connected or not has_ever_connected
 
@@ -344,12 +304,11 @@ def run_monitor(
                     ))
                 except Exception as exc:
                     live.update(Panel(
-                        f"[yellow]Render error: {exc}[/yellow]",
+                        f"[{current_theme().warning}]Render error: {exc}[/]",
                         title="Monitor",
-                        border_style="bright_black",
+                        border_style=current_theme().border,
                     ))
 
-                # Sleep in smaller increments so we can respond to Ctrl+C quickly
                 for _ in range(int(refresh * 4)):
                     if stop_event.is_set():
                         break
@@ -364,8 +323,6 @@ def run_monitor(
 
 
 def _make_trace_obj(data: dict[str, Any]) -> Any:
-    """Convert a trace dict from WebSocket into a simple object compatible with _compute_stats."""
-
     class _TraceObj:
         def __init__(self, d: dict[str, Any]) -> None:
             self.trace_id = d.get("trace_id", "")

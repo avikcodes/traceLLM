@@ -1,11 +1,11 @@
-"""TraceLLM dinosaur mascot."""
-
 from __future__ import annotations
 
 from enum import Enum
 
 from rich.panel import Panel
 from rich.text import Text
+
+from tracellm.themes import current_theme
 
 
 class MascotState(Enum):
@@ -23,27 +23,27 @@ __/       /
 <__.|_|-|_|"""
 
 
-_STYLE: dict[MascotState, str] = {
-    MascotState.IDLE: "bright_black",
-    MascotState.LOADING: "cyan",
-    MascotState.SUCCESS: "green",
-    MascotState.WARNING: "yellow",
-}
+def _style_for(state: MascotState) -> str:
+    theme = current_theme()
+    mapping = {
+        MascotState.IDLE: theme.secondary,
+        MascotState.LOADING: theme.info,
+        MascotState.SUCCESS: theme.success,
+        MascotState.WARNING: theme.warning,
+    }
+    return mapping.get(state, theme.secondary)
 
 
 def render(state: MascotState = MascotState.IDLE) -> Text:
-    """Full ASCII dinosaur art with state-based styling."""
-    return Text(DINOSAUR, style=_STYLE[state])
+    return Text(DINOSAUR, style=_style_for(state))
 
 
 def header(title: str, state: MascotState = MascotState.IDLE) -> Panel:
-    """Compact header Panel with mascot prefix."""
-    dino = Text("🦖 ", style=_STYLE[state])
-    title_text = Text.assemble(dino, Text(title, style="bold white"))
-    return Panel("", title=title_text, border_style="bright_black")
+    dino = Text("🦖 ", style=_style_for(state))
+    title_text = Text.assemble(dino, Text(title, style=current_theme().primary))
+    return Panel("", title=title_text, border_style=current_theme().border)
 
 
 def message(text: str, state: MascotState = MascotState.IDLE) -> Text:
-    """One-line mascot message (e.g. \"🦖 Trace complete\")."""
-    dino = Text("🦖 ", style=_STYLE[state])
-    return Text.assemble(dino, Text(text, style=_STYLE[state]))
+    dino = Text("🦖 ", style=_style_for(state))
+    return Text.assemble(dino, Text(text, style=_style_for(state)))

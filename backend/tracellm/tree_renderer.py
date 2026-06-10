@@ -1,5 +1,3 @@
-"""Execution tree view for replay — Rich Tree with nested steps."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -8,6 +6,7 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.tree import Tree
 
+from tracellm.themes import current_theme, success, error, secondary, tick
 from tracellm.utils import console, latency_style
 
 
@@ -25,12 +24,12 @@ def _step_label(step: dict[str, Any]) -> str:
     parts = []
     tool_name = step.get("tool_name", "unknown")
     duration = float(step.get("duration", 0.0))
-    success = bool(step.get("success", True))
+    success_flag = bool(step.get("success", True))
 
     parts.append(tool_name)
-    parts.append(f"[bright_black]{duration:.0f}ms[/bright_black]")
-    if not success:
-        parts.append("[red]RETRY[/red]")
+    parts.append(secondary(f"{duration:.0f}ms"))
+    if not success_flag:
+        parts.append(error("RETRY"))
 
     return "  ".join(parts)
 
@@ -39,10 +38,10 @@ def build_execution_tree(
     steps: list[dict[str, Any]],
     active_index: int | None = None,
 ) -> Tree:
-    """Build a nested execution tree from trace steps."""
+    theme = current_theme()
     tree = Tree(
-        Text("agent:start", style="bold white"),
-        guide_style="bright_black",
+        Text("agent:start", style=theme.primary),
+        guide_style=theme.secondary,
     )
 
     for i, step in enumerate(steps, 1):
@@ -50,7 +49,13 @@ def build_execution_tree(
         is_done = active_index is not None and i < active_index
         icon = _step_icon(step, is_active, is_done)
 
-        style = "cyan" if is_active else "dim" if (active_index is not None and i > active_index) else "white"
+        if is_active:
+            style = theme.info
+        elif active_index is not None and i > active_index:
+            style = "dim"
+        else:
+            style = theme.primary
+
         label = f"[{style}]{icon}[/]  [{style}]{_step_label(step)}[/]"
 
         if "children" in step and step["children"]:
@@ -63,7 +68,7 @@ def build_execution_tree(
             tree.add(label)
 
     status = "success" if all(s.get("success", True) for s in steps) else "warning"
-    final_style = "green" if status == "success" else "yellow"
+    final_style = theme.success if status == "success" else theme.warning
     tree.add(f"[{final_style}]\u2713[/]  [{final_style}]done[/]")
 
     return tree
@@ -73,6 +78,5 @@ def render_execution_panel(
     steps: list[dict[str, Any]],
     active_index: int | None = None,
 ) -> Panel:
-    """Render the execution tree inside a Panel."""
     tree = build_execution_tree(steps, active_index=active_index)
-    return Panel(tree, title="Execution Tree", border_style="bright_black", padding=(1, 2))
+    return Panel(tree, title="Execution Tree", border_style=current_theme().border, padding=(1, 2))

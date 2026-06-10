@@ -1,0 +1,301 @@
+[
+  {
+    "trace_id": "9a36946b-495a-4593-b4a1-380258f77ea5",
+    "prompt": "Explain transformers",
+    "response": "Transformers are neural architectures built around self-attention, which means the model can score how strongly every token should attend to every other token while building the next internal representation. That shift matters because it removes the strictly sequential bottleneck of older recurrent systems and makes training dramatically more parallel, which is why transformers became the default foundation for modern language models, multimodal systems, retrieval-heavy copilots, and agent frameworks.\n\nAt a systems level, the important intuition is that each layer repeatedly mixes three things: token identity, token position, and context relevance. Multi-head attention lets the model inspect several interaction patterns at once, so one head can track local syntax, another can follow long-range references, and another can focus on task-specific structure such as citations, code blocks, or tool outputs. Feed-forward blocks then reshape those mixed representations into features the next layer can use. Stack enough of these layers and the model learns abstractions that look like reasoning traces, latent memory lookups, planning heuristics, and style control even though the runtime primitive is still next-token prediction.\n\nFor production RAG and agent systems, transformers are only one part of the story. The operational pipeline usually includes query embedding, vector retrieval, reranking, prompt assembly, tool selection, retry handling, and final generation. A good answer is not just a function of the base model weights; it also depends on whether retrieval returned the right evidence, whether the planner selected the right tools, whether context budgeting dropped a critical chunk, and whether retries recovered from transient failures without hiding instability from operators.\n\nThat is why observability matters. When a transformer-based application appears to hallucinate, the root cause may actually be upstream: a low-recall vector search, schema drift in a tool contract, latency-induced truncation, or a retry path that silently swapped evidence sets between attempts. High-fidelity traces let teams inspect the exact execution graph, including step durations, retries, tool outputs, retrieval confidence, and token budgets. This makes it possible to distinguish model limitations from systems integration issues.\n\nIn practical terms, transformers excel because they scale with data, compute, and context more effectively than earlier sequence models. Self-attention produces rich contextual representations; retrieval extends the model with fresh external knowledge; tools let the system act beyond pure text generation; and planners coordinate these components into multi-step workflows. The resulting stack is powerful, but it is also failure-prone. The healthiest engineering pattern is to treat the LLM as one subsystem inside a larger distributed decision engine and trace every important boundary the same way you would trace a payment pipeline or a search request path.\n\nIf you are testing a dashboard, this run is intentionally token-heavy and observability-rich: it includes retrieval, planning, context allocation, tool validation, optional retries, and a long-form answer so latency, token volume, retries, and step timelines are all visible in the resulting trace payload. Session `7281b672` completed after `3` tool lookup attempt(s), with `11` replayable steps recorded before generation finished.",
+    "latency": 3146.96,
+    "token_count": 3269,
+    "model_name": "gpt-4.1-mini",
+    "project_id": "demo-workspace",
+    "project_name": "demo-workspace",
+    "api_key": null,
+    "environment": "development",
+    "status": "warning",
+    "steps": [
+      {
+        "step_id": "ede42aa9-0422-40ab-885c-7abdf3283556",
+        "tool_name": "query_embedding",
+        "input": {
+          "session_id": "7281b672",
+          "query": "Explain transformers for a production RAG + agent engineering team.",
+          "embedding_model": "text-embedding-3-large"
+        },
+        "output": {
+          "vector_dimensions": 1536,
+          "embedding_norm": 1.0137,
+          "checksum": "0x61f09",
+          "replay": {
+            "stage": "embedding",
+            "seed_hint": "7281b672"
+          }
+        },
+        "duration": 165.07,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:41.823324+00:00"
+      },
+      {
+        "step_id": "d842c484-7142-4aec-a1d5-fba9609b661a",
+        "tool_name": "vector_retrieval",
+        "input": {
+          "session_id": "7281b672",
+          "query": "Explain transformers for a production RAG + agent engineering team.",
+          "index": "research_embeddings_v2",
+          "top_k": 8,
+          "filters": {
+            "domain": "llm-systems",
+            "freshness_days": 180
+          }
+        },
+        "output": {
+          "documents_found": 14,
+          "candidate_chunks": 8,
+          "latency_bucket": "p50",
+          "selected_ids": [
+            "attention_is_all_you_need",
+            "retrieval_system_design",
+            "rag_failure_playbook",
+            "agent_latency_benchmarks",
+            "long_context_eval_report",
+            "toolformer_notes"
+          ],
+          "replay": {
+            "stage": "retrieval",
+            "query_hash": "0x61f09",
+            "cursor": "retrieval:7281b672"
+          }
+        },
+        "duration": 377.52,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:42.201098+00:00"
+      },
+      {
+        "step_id": "2dfd45b9-8404-4ceb-90fe-3d7166f4ec27",
+        "tool_name": "rerank_context",
+        "input": {
+          "session_id": "7281b672",
+          "strategy": "cross-encoder",
+          "candidate_count": 8
+        },
+        "output": {
+          "reranked_chunks": 5,
+          "coverage_score": 0.86,
+          "dropped_chunks": 3,
+          "replay": {
+            "stage": "rerank",
+            "selected_chunk_count": 5
+          }
+        },
+        "duration": 179.37,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:42.380640+00:00"
+      },
+      {
+        "step_id": "b45eacfd-f36b-4274-9a85-e917a92697f3",
+        "tool_name": "agent_planner",
+        "input": {
+          "session_id": "7281b672",
+          "mode": "multi-hop-reasoning",
+          "objective": "teach architecture and operational tradeoffs"
+        },
+        "output": {
+          "plan": [
+            "summarize transformer core concepts",
+            "connect self-attention to scaling behavior",
+            "map concepts to RAG and tool-using agents",
+            "call out failure modes and observability metrics"
+          ],
+          "planner_confidence": 0.827,
+          "requires_tool_validation": true,
+          "replay": {
+            "stage": "planning",
+            "plan_id": "plan-7281b672"
+          }
+        },
+        "duration": 142.91,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:42.523803+00:00"
+      },
+      {
+        "step_id": "e77784b2-0df0-4f7c-ad85-53b4fab5cd23",
+        "tool_name": "context_window_allocator",
+        "input": {
+          "session_id": "7281b672",
+          "budget_tokens": 5620,
+          "response_budget": 998
+        },
+        "output": {
+          "allocated_context_tokens": 3276,
+          "reserved_for_tools": 710,
+          "compression_applied": false,
+          "replay": {
+            "stage": "budgeting",
+            "slot_map": [
+              "system",
+              "retrieval",
+              "tools",
+              "generation"
+            ]
+          }
+        },
+        "duration": 61.06,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:42.585101+00:00"
+      },
+      {
+        "step_id": "9c1d5223-822c-4af6-aac6-490537b3e679",
+        "tool_name": "tool_schema_lookup",
+        "input": {
+          "session_id": "7281b672",
+          "attempt": 1,
+          "requested_tool": "citation_builder"
+        },
+        "output": {
+          "error": "schema registry timeout",
+          "retryable": true,
+          "replay": {
+            "stage": "tool_lookup",
+            "attempt": 1,
+            "decision": "retry"
+          }
+        },
+        "duration": 150.2,
+        "success": false,
+        "timestamp": "2026-06-10T23:10:42.735501+00:00"
+      },
+      {
+        "step_id": "a35866e7-3fc1-4da7-b6c6-340caf5e87aa",
+        "tool_name": "retry_guard",
+        "input": {
+          "session_id": "7281b672",
+          "attempt": 1,
+          "policy": "exponential_backoff_with_jitter"
+        },
+        "output": {
+          "status": "retry_scheduled",
+          "backoff_ms": 400,
+          "guardrail_state": "within_threshold",
+          "replay": {
+            "stage": "retry",
+            "attempt": 1,
+            "next_attempt": 2
+          }
+        },
+        "duration": 127.0,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:42.862676+00:00"
+      },
+      {
+        "step_id": "a60f7e63-952e-441d-a4d4-471fe5802b06",
+        "tool_name": "tool_schema_lookup",
+        "input": {
+          "session_id": "7281b672",
+          "attempt": 2,
+          "requested_tool": "citation_builder"
+        },
+        "output": {
+          "error": "stale tool contract version",
+          "retryable": true,
+          "replay": {
+            "stage": "tool_lookup",
+            "attempt": 2,
+            "decision": "retry"
+          }
+        },
+        "duration": 224.36,
+        "success": false,
+        "timestamp": "2026-06-10T23:10:43.087241+00:00"
+      },
+      {
+        "step_id": "bd578d33-8351-43f0-972b-297848369190",
+        "tool_name": "retry_guard",
+        "input": {
+          "session_id": "7281b672",
+          "attempt": 2,
+          "policy": "exponential_backoff_with_jitter"
+        },
+        "output": {
+          "status": "retry_scheduled",
+          "backoff_ms": 347,
+          "guardrail_state": "within_threshold",
+          "replay": {
+            "stage": "retry",
+            "attempt": 2,
+            "next_attempt": 3
+          }
+        },
+        "duration": 165.65,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:43.253111+00:00"
+      },
+      {
+        "step_id": "ac04140e-018a-44c2-abb3-e14013df0be4",
+        "tool_name": "tool_schema_lookup",
+        "input": {
+          "session_id": "7281b672",
+          "attempt": 3,
+          "requested_tool": "citation_builder"
+        },
+        "output": {
+          "tool_contract_version": "2026.05.21",
+          "arguments_validated": true,
+          "replay": {
+            "stage": "tool_lookup",
+            "attempt": 3,
+            "decision": "continue"
+          }
+        },
+        "duration": 124.75,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:43.378181+00:00"
+      },
+      {
+        "step_id": "bb29ed7a-a4ff-4a66-a75f-d22ad32d8024",
+        "tool_name": "citation_builder",
+        "input": {
+          "session_id": "7281b672",
+          "source_count": 5,
+          "format": "inline-bullets"
+        },
+        "output": {
+          "citations_generated": 5,
+          "deduplicated_sources": 5,
+          "replay": {
+            "stage": "tool_execution",
+            "artifact_id": "cite-7281b672"
+          }
+        },
+        "duration": 203.23,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:43.581655+00:00"
+      },
+      {
+        "step_id": "eb252452-7205-49db-87ad-02680c176f4e",
+        "tool_name": "response_generation",
+        "input": {
+          "session_id": "7281b672",
+          "model": "gpt-4.1-mini",
+          "temperature": 0.4,
+          "max_output_tokens": 1400
+        },
+        "output": {
+          "preview": "Transformers are neural architectures built around self-attention, which means the model can score how strongly every token should attend to every other token while building the next internal representation. That shift m",
+          "output_sections": 6,
+          "estimated_completion_tokens": 1346,
+          "replay": {
+            "stage": "generation",
+            "response_id": "resp-7281b672",
+            "attempt_count": 3
+          }
+        },
+        "duration": 1223.07,
+        "success": true,
+        "timestamp": "2026-06-10T23:10:44.804977+00:00"
+      }
+    ],
+    "retry_count": 2,
+    "slow_request": true,
+    "failure_reason": "schema registry timeout",
+    "created_at": "2026-06-10T23:10:41.658053+00:00",
+    "updated_at": "2026-06-10T23:10:44.818819+00:00"
+  }
+]
