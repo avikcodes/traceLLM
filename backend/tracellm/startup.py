@@ -87,22 +87,21 @@ def _render_status(storage_type: str, storage_detail: str, api_ok: bool, port: i
     console.print(
         Panel.fit(table, title="TraceLLM Stack", border_style=theme.border, padding=(1, 3))
     )
-    console.print()
 
 
 def run_start(port: int = 8000, dashboard_port: int = 3000, no_browser: bool = False) -> None:
     console.print()
     console.print(render_banner())
-    console.print()
     console.print(message("TraceLLM starting...", MascotState.LOADING))
-    console.print()
 
     api_process = _start_fastapi(port)
     api_ok, storage_type, storage_detail = _health_check(port)
 
+    console.print()
+
     if api_ok:
         if storage_type == "sqlite":
-            console.print(f"  {tick()} SQLite initialized")
+            console.print(f"  {tick()} SQLite connected")
         else:
             console.print(f"  {tick()} MongoDB connected")
         console.print(f"  {tick()} API ready")
@@ -118,6 +117,9 @@ def run_start(port: int = 8000, dashboard_port: int = 3000, no_browser: bool = F
         console.print(f"  {cross()} WebSocket unavailable")
 
     _render_status(storage_type, storage_detail, api_ok, port)
+
+    console.print()
+    console.print(message("Tracey: Ready to monitor your AI workflows", MascotState.SUCCESS))
 
     try:
         api_process.wait()
