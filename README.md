@@ -117,7 +117,7 @@ A[AI Application]
 
 B --> C[Trace Collector]
 
-C --> D[(MongoDB)]
+C --> D[(SQLite)]
 
 C --> E[Live WebSocket Stream]
 
@@ -127,6 +127,7 @@ D --> G[Replay Engine]
 
 G --> F
 ```
+
 
 ---
 
@@ -139,7 +140,7 @@ participant User
 participant App
 participant TraceLLM
 participant LLM
-participant DB
+participant SQLite
 
 User->>App: Ask Question
 
@@ -149,7 +150,7 @@ TraceLLM->>LLM: Send Prompt
 
 LLM-->>TraceLLM: Response
 
-TraceLLM->>DB: Save Trace
+TraceLLM->>SQLite: Save Trace
 
 TraceLLM-->>App: Return Result
 
@@ -178,46 +179,72 @@ Start TraceLLM:
 tracellm start
 ```
 
----
+Expected output:
 
-# MongoDB Setup
-
-Create a `.env`
-
-```env
-MONGO_URL=your_mongodb_connection_string
-DB_NAME=tracellm
+```text
+✓ SQLite initialized
+✓ API ready
+✓ WebSocket ready
+✓ Dashboard ready
+✓ Opening browser...
 ```
 
-Run:
+---
+
+# Zero Configuration Setup
+
+TraceLLM now uses SQLite by default.
+
+No MongoDB required.
+
+No database setup required.
+
+No .env configuration required.
+
+Running:
 
 ```bash
 tracellm start
 ```
 
-Expected output:
+automatically:
 
 ```text
-✓ MongoDB connected
-✓ API ready
-✓ WebSocket ready
+✓ Creates local SQLite database
+
+~/.tracellm/traces.db
+
+✓ Starts API server
+
+✓ Starts dashboard
+
+✓ Opens browser automatically
 ```
+
 
 ---
 
-# Quick Start
+# Installation
 
-## Basic Trace
+Install directly from PyPI.
 
-```python
-from tracellm import trace
-
-@trace
-def ask_llm():
-    return "Hello World"
-
-ask_llm()
+```bash
+pip install tracellm-cli
 ```
+
+Verify installation:
+
+```bash
+tracellm --help
+```
+
+Start TraceLLM:
+
+```bash
+tracellm start
+```
+
+---
 
 ---
 
@@ -365,20 +392,19 @@ The official TraceLLM dinosaur mascot.
 
 Tracey helps users:
 
-- Setup MongoDB
 - Install TraceLLM
 - Create first traces
 - Troubleshoot issues
 - Understand observability concepts
+- Navigate the documentation
 
 You'll find Tracey throughout the documentation helping guide you.
 
 ---
 
-# Roadmap
-
 ## v0.3
 
+- [ ] CLI themes
 - [ ] Multi-project support
 - [ ] Better dashboards
 - [ ] Search traces
@@ -386,16 +412,15 @@ You'll find Tracey throughout the documentation helping guide you.
 
 ## v0.4
 
-- [ ] Team collaboration
-- [ ] Role management
+- [ ] Trace filtering
 - [ ] Trace comparison
+- [ ] Dashboard customization
 
 ## v0.5
 
 - [ ] OpenTelemetry support
 - [ ] Distributed tracing
 - [ ] Production deployment tooling
-
 ---
 
 # Contributing
