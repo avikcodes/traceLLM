@@ -1,12 +1,12 @@
 "use client";
 
-import { useDeferredValue, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useCallback, useDeferredValue, useState } from "react";
+import { ArrowLeft, Copy, Download, FileText } from "lucide-react";
 
 import { useRealtimeTrace, useRealtimeTraces } from "@/hooks/use-observability-data";
 import { StepTimeline } from "@/components/console/step-timeline";
 import { TraceInspector } from "@/components/console/trace-inspector";
-import { formatDuration, formatFullTimestamp, formatTimestamp } from "@/lib/format";
+import { downloadTracesAsJson, downloadTracesAsMarkdown, formatDuration, formatFullTimestamp, formatTimestamp, formatTraceForClipboard } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TraceRecord, TraceStep } from "@/lib/types";
 
@@ -15,6 +15,13 @@ function TraceDetail({ trace }: { trace: TraceRecord }) {
   const current = liveTrace ?? trace;
   const [selectedStep, setSelectedStep] = useState<TraceStep | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(formatTraceForClipboard(current));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [current]);
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -25,6 +32,33 @@ function TraceDetail({ trace }: { trace: TraceRecord }) {
         <span className="text-muted/30">|</span>
         <span className="text-muted">Model</span>
         <span className="text-foreground font-medium">{current.model_name ?? "—"}</span>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => downloadTracesAsMarkdown([current], `trace_${current.trace_id}.md`)}
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <FileText className="size-3.5" />
+            Export MD
+          </button>
+          <button
+            onClick={() => downloadTracesAsJson([current], `trace_${current.trace_id}.json`)}
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <Download className="size-3.5" />
+            Export JSON
+          </button>
+          <span className="text-muted/30">|</span>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <Copy className="size-3.5" />
+            {copied ? "Trace copied" : "Copy Trace"}
+          </button>
+          {copied && (
+            <span className="text-xs text-accent animate-pulse">✓</span>
+          )}
+        </div>
         <span className="text-muted/30">|</span>
         <span className="text-muted">Latency</span>
         <span className="text-foreground font-medium">{formatDuration(current.latency)}</span>
@@ -84,22 +118,51 @@ function TraceDetail({ trace }: { trace: TraceRecord }) {
   );
 }
 
+type StatusFilter = "all" | "success" | "failed";
+
 export default function TracesPage() {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { items, loading } = useRealtimeTraces({ limit: 100 });
   const deferredSearch = useDeferredValue(search);
 
-  const filtered = deferredSearch
-    ? items.filter(
-        (t) =>
-          t.trace_id.toLowerCase().includes(deferredSearch.toLowerCase()) ||
-          t.prompt.toLowerCase().includes(deferredSearch.toLowerCase()) ||
-          (t.model_name ?? "").toLowerCase().includes(deferredSearch.toLowerCase())
-      )
-    : items;
+  const filtered = items.filter((t) => {
+    const q = deferredSearch.toLowerCase();
+    if (q) {
+      const matchesSearch =
+        t.trace_id.toLowerCase().includes(q) ||
+        t.prompt.toLowerCase().includes(q) ||
+        (t.model_name ?? "").toLowerCase().includes(q) ||
+        (t.failure_reason ?? "").toLowerCase().includes(q);
+      if (!matchesSearch) return false;
+    }
+    if (statusFilter === "success" && t.status !== "success") return false;
+    if (statusFilter === "failed" && t.status !== "failed") return false;
+    return true;
+  });
 
   const selectedTrace = selectedTraceId ? items.find((t) => t.trace_id === selectedTraceId) ?? null : null;
+
+  const toggleId = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((t) => t.trace_id)));
+    }
+  };
+
+  const selectedTraces = items.filter((t) => selectedIds.has(t.trace_id));
 
   if (selectedTrace) {
     return (
@@ -126,10 +189,58 @@ export default function TracesPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by ID, prompt, model..."
+            placeholder="Search traces..."
             className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent/50 transition-colors placeholder:text-muted/50"
           />
         </div>
+        <div className="flex items-center gap-1.5">
+          {(["all", "success", "failed"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setStatusFilter(f)}
+              className={cn(
+                "text-xs px-2.5 py-1 rounded-md transition-colors",
+                statusFilter === f
+                  ? "bg-accent/10 text-accent font-medium"
+                  : "text-muted hover:text-foreground"
+              )}
+            >
+              {f === "all" ? "All" : f === "success" ? "Success" : "Failed"}
+            </button>
+          ))}
+        </div>
+        {selectedIds.size > 0 && (
+          <>
+            <button
+              onClick={() => downloadTracesAsMarkdown(selectedTraces, "selected_traces.md")}
+              className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+            >
+              <FileText className="size-3.5" />
+              MD ({selectedIds.size})
+            </button>
+            <button
+              onClick={() => downloadTracesAsJson(selectedTraces, "selected_traces.json")}
+              className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+            >
+              <Download className="size-3.5" />
+              JSON ({selectedIds.size})
+            </button>
+          </>
+        )}
+        <button
+          onClick={() => downloadTracesAsMarkdown(filtered, "all_traces.md")}
+          className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+        >
+          <FileText className="size-3.5" />
+          All MD
+        </button>
+        <button
+          onClick={() => downloadTracesAsJson(filtered, "all_traces.json")}
+          className="flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors"
+        >
+          <Download className="size-3.5" />
+          All JSON
+        </button>
         <span className="text-sm text-muted">{filtered.length} results</span>
       </div>
 
@@ -143,6 +254,14 @@ export default function TracesPage() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border text-muted">
+                  <th className="w-10 px-2 py-3">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                      onChange={selectAll}
+                      className="accent-accent"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Status</th>
                   <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Trace ID</th>
                   <th className="text-left px-4 py-3 font-medium text-xs uppercase tracking-wider">Prompt</th>
@@ -155,53 +274,94 @@ export default function TracesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((trace) => (
-                  <tr
-                    key={trace.trace_id}
-                    className="border-b border-border/50 hover:bg-surface-hover transition-colors cursor-pointer"
-                    onClick={() => setSelectedTraceId(trace.trace_id)}
-                  >
-                    <td className="px-4 py-3">
-                      <span className={cn(
-                        "text-xs font-medium",
-                        trace.status === "success" ? "text-accent" :
-                        trace.status === "warning" ? "text-warning" :
-                        trace.status === "failed" ? "text-error" : "text-muted"
-                      )}>
-                        {trace.status === "success" ? "Success" :
-                         trace.status === "warning" ? "Warning" :
-                         trace.status === "failed" ? "Failed" : trace.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-mono text-muted">{trace.trace_id.slice(0, 12)}</span>
-                    </td>
-                    <td className="px-4 py-3 text-foreground max-w-xs truncate">
-                      {trace.prompt}
-                    </td>
-                    <td className="px-4 py-3 text-muted">
-                      {trace.model_name ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right text-foreground">
-                      {formatDuration(trace.latency)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-foreground">
-                      {trace.token_count.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-right text-muted">
-                      {trace.retry_count > 0 ? trace.retry_count : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-muted whitespace-nowrap">
-                      {formatTimestamp(trace.created_at)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted">
-                      View →
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((trace) => {
+                  const isChecked = selectedIds.has(trace.trace_id);
+                  return (
+                    <tr
+                      key={trace.trace_id}
+                      className={cn(
+                        "border-b border-border/50 transition-colors cursor-pointer",
+                        isChecked ? "bg-accent/5" : "hover:bg-surface-hover"
+                      )}
+                    >
+                      <td className="px-2 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleId(trace.trace_id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-accent"
+                        />
+                      </td>
+                      <td
+                        className="px-4 py-3"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        <span className={cn(
+                          "text-xs font-medium",
+                          trace.status === "success" ? "text-accent" :
+                          trace.status === "warning" ? "text-warning" :
+                          trace.status === "failed" ? "text-error" : "text-muted"
+                        )}>
+                          {trace.status === "success" ? "Success" :
+                           trace.status === "warning" ? "Warning" :
+                           trace.status === "failed" ? "Failed" : trace.status}
+                        </span>
+                      </td>
+                      <td
+                        className="px-4 py-3"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        <span className="text-xs font-mono text-muted">{trace.trace_id.slice(0, 12)}</span>
+                      </td>
+                      <td
+                        className="px-4 py-3 text-foreground max-w-xs truncate"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        {trace.prompt}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-muted"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        {trace.model_name ?? "—"}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right text-foreground"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        {formatDuration(trace.latency)}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right text-foreground"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        {trace.token_count.toLocaleString()}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right text-muted"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        {trace.retry_count > 0 ? trace.retry_count : "—"}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-muted whitespace-nowrap"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        {formatTimestamp(trace.created_at)}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-sm text-muted"
+                        onClick={() => setSelectedTraceId(trace.trace_id)}
+                      >
+                        View →
+                      </td>
+                    </tr>
+                  );
+                })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-sm text-muted">
+                    <td colSpan={10} className="text-center py-12 text-sm text-muted">
                       No traces found
                     </td>
                   </tr>

@@ -1,7 +1,10 @@
 "use client";
 
+import { useCallback, useState } from "react";
+import { Copy, Download, FileText } from "lucide-react";
+
 import { cn } from "@/lib/utils";
-import { formatDuration, formatCompactNumber, formatFullTimestamp } from "@/lib/format";
+import { downloadTracesAsJson, downloadTracesAsMarkdown, formatDuration, formatCompactNumber, formatFullTimestamp, formatTraceForClipboard } from "@/lib/format";
 import { TraceRecord, TraceStep } from "@/lib/types";
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -77,6 +80,15 @@ export function TraceInspector({
   trace?: TraceRecord | null;
   selectedStep?: TraceStep | null;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    if (!trace) return;
+    navigator.clipboard.writeText(formatTraceForClipboard(trace));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [trace]);
+
   if (!trace) {
     return (
       <div className="card h-full flex flex-col">
@@ -94,16 +106,39 @@ export function TraceInspector({
     <div className="card h-full flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
         <span className="text-xs font-medium text-muted uppercase tracking-wider">Details</span>
-        <span className={cn(
-          "text-xs font-medium px-2 py-0.5 rounded bg-accent-subtle",
-          trace.status === "success" ? "text-accent" :
-          trace.status === "warning" ? "text-warning" :
-          trace.status === "failed" ? "text-error" : "text-muted"
-        )}>
-          {trace.status === "success" ? "Success" :
-           trace.status === "warning" ? "Warning" :
-           trace.status === "failed" ? "Failed" : trace.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => downloadTracesAsMarkdown([trace], `trace_${trace.trace_id}.md`)}
+            className="flex items-center gap-1 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <FileText className="size-3" />
+            MD
+          </button>
+          <button
+            onClick={() => downloadTracesAsJson([trace], `trace_${trace.trace_id}.json`)}
+            className="flex items-center gap-1 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <Download className="size-3" />
+            JSON
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-xs text-muted hover:text-foreground transition-colors"
+          >
+            <Copy className="size-3" />
+            {copied ? "Trace copied" : "Copy"}
+          </button>
+          <span className={cn(
+            "text-xs font-medium px-2 py-0.5 rounded bg-accent-subtle",
+            trace.status === "success" ? "text-accent" :
+            trace.status === "warning" ? "text-warning" :
+            trace.status === "failed" ? "text-error" : "text-muted"
+          )}>
+            {trace.status === "success" ? "Success" :
+             trace.status === "warning" ? "Warning" :
+             trace.status === "failed" ? "Failed" : trace.status}
+          </span>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         <Section title="Overview">
